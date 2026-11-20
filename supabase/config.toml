@@ -1,0 +1,5 @@
+project_id = "brain-forge"
+
+[auth]
+site_url = "http://localhost:5173"
+enable_anonymous_sign_ins = true

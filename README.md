@@ -62,14 +62,14 @@ uv sync --directory apps/api --python 3.13.15 --locked
 | 1 · FastAPI | `pnpm.cmd dev:api` | http://localhost:8000/api/v1/health |
 | 2 · React | `pnpm.cmd dev:web` | http://localhost:5173 |
 
-ブラウザーで Web を開くと「開発環境は正常に起動しています。」と表示され、API の表示が「接続確認中」から「正常接続」に変わります。通信に失敗した場合は API の起動とポートを確認し、「再確認」を押してください。各サーバーは起動したターミナルの Ctrl+C で停止できます。
+ブラウザーで Web を開くと工場画面が表示され、API の表示が「接続確認中」から「正常接続」に変わります。通信に失敗した場合は API の起動とポートを確認し、「再確認」を押してください。各サーバーは起動したターミナルの Ctrl+C で停止できます。
 
 ```powershell
 Invoke-RestMethod http://localhost:8000/api/v1/health | ConvertTo-Json -Compress
 # {"status":"ok","service":"brain-forge-api"}
 ```
 
-CORS は `http://localhost:5173` と `http://127.0.0.1:5173` からの GET を許可します。Vite は 5173 番が使用中なら起動を停止します。開発ポートを変更する場合は `apps/web/vite.config.ts` と `apps/api/app/main.py` の許可オリジンを合わせてください。[FastAPI の CORS 設定](https://fastapi.tiangolo.com/tutorial/cors/)
+CORS は `http://localhost:5173` と `http://127.0.0.1:5173` からの GET と POST、および `Authorization` ヘッダーを許可します。Vite は 5173 番が使用中なら起動を停止します。開発ポートを変更する場合は `apps/web/vite.config.ts` と `apps/api/app/main.py` の許可オリジンを合わせてください。[FastAPI の CORS 設定](https://fastapi.tiangolo.com/tutorial/cors/)
 
 ## 環境変数
 
@@ -85,12 +85,21 @@ if (!(Test-Path apps/api/.env.local)) { Copy-Item apps/api/.env.example apps/api
 | `apps/web/.env.local` | `VITE_API_BASE_URL` | 既定値は `http://localhost:8000`。API のオリジンを指定 |
 | 同上 | `VITE_SUPABASE_URL` | Supabase の Project URL |
 | 同上 | `VITE_SUPABASE_PUBLISHABLE_KEY` | ブラウザー用の公開キー（`sb_publishable_` で始まる値） |
-| `apps/api/.env.local` | `SUPABASE_URL` | 将来のサーバー側接続用の Project URL |
-| 同上 | `SUPABASE_SECRET_KEY` | サーバー専用のシークレットキー。権限が必要な API を実装する段階で設定 |
+| `apps/api/.env.local` | `SUPABASE_URL` | Web と同じ Supabase Project URL |
+| 同上 | `SUPABASE_PUBLISHABLE_KEY` | Web と同じ公開キー。Supabase Auth にトークンの確認を依頼する際に使用 |
+| 同上 | `SUPABASE_DB_URL` | `brain_forge_api` ロール用の PostgreSQL 接続文字列 |
 
-Web は URL と公開キーがそろうとクライアントを初期化します。「設定済み」は初期化の成功を表します。どちらかが空欄なら「接続未設定」、初期化できない値なら「設定エラー」と表示します。API は未設定を起動ログに記録します。ヘルスチェックは Supabase の設定に依存しません。
+Web は URL と公開キーがそろうと、既存のセッションを復元するか、匿名でサインインします。工場画面の下部で認証状態を確認できます。Supabase が未設定でも工場の固定サンプルとヘルスチェックを利用できます。
 
 `VITE_` の値はビルド成果物に含まれます。シークレットキーと旧 `service_role` キーはサーバー側だけで管理してください。Git には値が空の `.env.example` を含め、実際の `.env`・`.env.local` は除外します。[Vite の環境変数](https://vite.dev/guide/env-and-mode) · [Supabase の API キー](https://supabase.com/docs/guides/api/api-keys)
+
+## Supabase で認証と進捗保存を使う
+
+1. ローカル環境ではリポジトリのルートで `supabase start` を使います。同梱の設定で匿名サインインが有効になります。ホスト環境では Brain Forge 用のプロジェクトで匿名サインインを有効にし、`supabase/migrations` のマイグレーションを適用します。[匿名サインインの設定](https://supabase.com/docs/guides/auth/auth-anonymous) · [ローカル開発](https://supabase.com/docs/guides/local-development)
+2. マイグレーションが作成する `brain_forge_api` ロールに、管理者として `psql` の `\password brain_forge_api` で専用パスワードを設定します。API の接続文字列にはこのロールを使います。共有プーラーのユーザー名は `brain_forge_api.<project-ref>` です。[PostgreSQL の接続方法](https://supabase.com/docs/guides/database/connecting-to-postgres)
+3. 上記の環境変数を設定して Web と API を再起動します。挑戦・検品・進捗 API に Supabase セッションのアクセストークンを `Authorization: Bearer <token>` で送信します。`GET /api/v1/me/progress` は本人のベストスキャン数とクリア回数を返します。
+
+PostgreSQL を使う統合テストは、マイグレーション適用済みのテスト DB を `BRAIN_FORGE_TEST_ADMIN_DSN` と `BRAIN_FORGE_TEST_API_DSN` で指定して `pnpm.cmd test:api` を実行します。テスト DB で後者は `brain_forge_api` ロールを使います。
 
 ## 品質チェック
 
@@ -99,7 +108,7 @@ Web は URL と公開キーがそろうとクライアントを初期化しま�
 | `pnpm.cmd lint` | ESLint。警告も失敗として扱う |
 | `pnpm.cmd typecheck` | TypeScript の strict 型チェック |
 | `pnpm.cmd build` | 型チェックと本番用ビルド。出力は `apps/web/dist` |
-| `pnpm.cmd test:api` | pytest。ヘルスチェックの JSON、開発オリジン2件、未許可オリジンの拒否を検証 |
+| `pnpm.cmd test:api` | pytest。ヘルスチェック、検品ルール、認証と所有者チェック、および設定時の PostgreSQL 永続化と RLS を検証 |
 
 ## ディレクトリと設計方針
 
@@ -112,9 +121,9 @@ Web は URL と公開キーがそろうとクライアントを初期化しま�
 | `apps/api/app` | `main.py` が起点。`api` はルート、`core` は設定、`schemas` は入出力型、`services` は将来の業務処理 |
 | `apps/api/tests` | API の自動テスト |
 | `packages/contracts` | 将来 Web と API で共有するデータ契約 |
-| `supabase/migrations` | 次段階で設計する PostgreSQL テーブルと RLS の変更履歴 |
-| `docs` | 設計資料。基盤構築時点では `mvp-design.md` は未提供 |
+| `supabase/migrations` | PostgreSQL テーブルと RLS の変更履歴を配置する予定 |
+| `docs` | [MVP設計書](docs/mvp-design.md)などの設計資料 |
 
 ## 今後の開発予定
 
-まず `docs/mvp-design.md` に最初の学習ステージの設備、操作、観察できる結果、達成条件を定めます。その仕様からゲーム状態とステージ定義を作り、最小の 2D 表示で観察から実験までを試せるようにします。進捗保存の要件が固まった段階で匿名認証、テーブル、RLS を設計します。3D 表示、自動化プログラミング、シミュレーションの Web Worker 化はその後の拡張候補です。
+[MVP設計書](docs/mvp-design.md)に沿って、まず「鉱石の検品ライン」の2Dプロトタイプを作成します。続いて FastAPI に探索ルールとテストを実装し、Supabase の匿名認証、挑戦管理、進捗保存、RLS を導入します。UIとAPIの統合後にプレイテストを行います。3D表示、自動化プログラミング、シミュレーションの Web Worker 化はその後の拡張候補です。

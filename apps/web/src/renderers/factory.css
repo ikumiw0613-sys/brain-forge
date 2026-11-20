@@ -1,0 +1,95 @@
+.factory-panel { container-type: inline-size; }
+
+.factory-panel .panel-heading { min-height: 52px; padding: 12px 18px; }
+
+.factory-scroll {
+  overflow-x: auto;
+  border-block: 1px solid var(--border);
+  background: #121b21;
+}
+
+.factory-scroll:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.factory-diagram { position: relative; min-width: 790px; }
+
+.factory-scene {
+  display: block;
+  width: 100%;
+  height: auto;
+  background:
+    radial-gradient(ellipse at 50% 55%, #23333c55, transparent 72%),
+    linear-gradient(#2d3e474f 1px, transparent 1px),
+    linear-gradient(90deg, #2d3e474f 1px, transparent 1px),
+    #121b21;
+  background-size: auto, 24px 24px, 24px 24px, auto;
+}
+
+.equipment-label, .belt-label {
+  color: #c4cfd3;
+  font-size: 17px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.equipment-label.scanner-label { color: #abe0e7; }
+.equipment-label text, .belt-label text, .equipment-label circle { fill: currentColor; }
+.equipment-label path, .belt-label path { fill: none; stroke: currentColor; stroke-width: 1; }
+
+.container-control { position: absolute; }
+
+.container-control input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.container-art { display: block; width: 100%; height: auto; overflow: visible; pointer-events: none; }
+
+.container-control input:focus-visible + .container-art {
+  outline: 2px dashed #e6f1f4;
+  border-radius: 2px;
+}
+
+.container-control input:is(:hover, :checked) + .container-art .container-face {
+  fill: #382c1e;
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.container-pointer { display: none; fill: var(--accent); stroke: #161e24; }
+.container-control input:checked + .container-art .container-pointer { display: block; }
+
+.container-check circle { fill: #143333; stroke: #abe0e7; }
+.container-check path { fill: none; stroke: #d0fcff; stroke-width: 1.5; }
+
+.container-number {
+  fill: #f8ce88;
+  font: 700 17px var(--mono);
+  text-anchor: middle;
+}
+
+.factory-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px 16px;
+  min-height: 48px;
+  padding: 8px 18px;
+  color: var(--muted);
+  font-size: .85rem;
+}
+
+.factory-caption strong { margin-right: 6px; color: var(--accent); }
+.factory-scroll-hint { display: none; font-size: .78rem; }
+
+@container (width < 790px) {
+  .factory-scroll-hint { display: block; }
+}

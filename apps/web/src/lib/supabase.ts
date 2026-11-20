@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import type { Session } from '@supabase/supabase-js'
 
 function configureSupabase() {
   const url = import.meta.env.VITE_SUPABASE_URL?.trim()
@@ -13,3 +14,30 @@ function configureSupabase() {
 }
 
 export const supabase = configureSupabase()
+
+let pendingSession: Promise<Session> | undefined
+
+export function ensureSupabaseSession(): Promise<Session> {
+  const client = supabase.client
+  if (!client) return Promise.reject(new Error('Supabase is not configured'))
+  if (pendingSession) return pendingSession
+
+  const restoreOrCreateSession = async () => {
+    const current = await client.auth.getSession()
+    if (current.error) throw current.error
+    if (current.data.session) return current.data.session
+
+    const anonymous = await client.auth.signInAnonymously()
+    if (anonymous.error) throw anonymous.error
+    if (!anonymous.data.session) throw new Error('Supabase did not return a session')
+    return anonymous.data.session
+  }
+
+  const locks = navigator.locks
+  const session = locks
+    ? locks.request('brain-forge-anonymous-session', restoreOrCreateSession)
+    : restoreOrCreateSession()
+  pendingSession = Promise.resolve(session).finally(() => { pendingSession = undefined })
+
+  return pendingSession
+}

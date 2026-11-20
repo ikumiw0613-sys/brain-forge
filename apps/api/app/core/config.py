@@ -8,4 +8,7 @@ class Settings(BaseSettings):
     )
 
     supabase_url: AnyHttpUrl | None = None
+    supabase_publishable_key: SecretStr | None = None
+    supabase_db_url: SecretStr | None = None
+    # Retained for existing starter environment files.
     supabase_secret_key: SecretStr | None = None
