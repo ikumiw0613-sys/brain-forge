@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.pnpm-store/
+.local-tools/
+.venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+.env
+.env.*
+!.env.example
+supabase/.temp/
+supabase/.branches/

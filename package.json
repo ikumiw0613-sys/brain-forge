@@ -1,0 +1,16 @@
+{
+  "name": "brain-forge",
+  "private": true,
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter @brain-forge/web dev",
+    "dev:api": "uv run --directory apps/api --locked uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload",
+    "build": "pnpm --filter @brain-forge/web build",
+    "lint": "pnpm --filter @brain-forge/web lint",
+    "typecheck": "pnpm --filter @brain-forge/web typecheck",
+    "test:api": "uv run --directory apps/api --locked pytest"
+  }
+}
