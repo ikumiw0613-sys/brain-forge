@@ -28,6 +28,18 @@
 }
 .conveyor-equipment-pulse { opacity: max(0, calc(1 - var(--conveyor-progress, 0) * 2.6)); }
 
+.conveyor-scanner-sweep {
+  --scanner-sweep-phase: var(--conveyor-progress, 0);
+  transform: translate(calc(var(--conveyor-step-x) * .44 * var(--scanner-sweep-phase)),
+    calc(var(--conveyor-step-y) * .44 * var(--scanner-sweep-phase)));
+}
+.conveyor-scanner-sweep[data-returning='true'] { --scanner-sweep-phase: calc(1 - var(--conveyor-progress, 0)); }
+.conveyor-scanner-lamp { fill: #5f778e; }
+.conveyor-scanner-emitter { stroke: #58758a; }
+.conveyor-scanner-housing[data-status='inspecting'] .conveyor-scanner-lamp { fill: #86edf8; }
+.conveyor-scanner-housing[data-status='inspecting'] .conveyor-scanner-emitter { stroke: #86edf8; }
+.conveyor-scanner-housing[data-status='passed'] .conveyor-scanner-lamp { fill: #c6fbff; }
+
 .conveyor-power-rail { fill: none; stroke: #435f73; stroke-width: 2.5; }
 .conveyor-lamp { fill: #5f778e; }
 .conveyor-gate-lamp-complete { fill: #b6f8ff; }
@@ -54,7 +66,7 @@
   .conveyor-diagram-label { display: none; }
   .conveyor-mobile-readings {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px 12px;
     padding: 11px 12px;
     border-top: 1px solid var(--border);
@@ -69,5 +81,5 @@
 @media (prefers-reduced-motion: reduce) {
   .conveyor-item-moving, .conveyor-treads, .conveyor-gate-shutter, .conveyor-gate-load-motion { transform: none; }
   .conveyor-item-entering { opacity: 1; }
-  .conveyor-equipment-pulse { display: none; }
+  .conveyor-equipment-pulse, .conveyor-scanner-sweep { display: none; }
 }

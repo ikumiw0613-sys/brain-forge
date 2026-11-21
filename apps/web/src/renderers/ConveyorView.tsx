@@ -2,8 +2,9 @@ import { useId, useLayoutEffect, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import { conveyorLength } from '../features/game/conveyor'
 import type { ConveyorItem } from '../features/game/conveyor'
-import type { MinerStatus } from '../features/game/factory'
-import { BeltLine, DispatchBay, DispatchHousing, DispatchShutter, FactoryFloor, OreContainer, OreMiner } from './ConveyorSceneArt'
+import { inspectionDuration, scannerPosition } from '../features/game/factory'
+import type { FactoryItem, MinerStatus } from '../features/game/factory'
+import { BeltLine, DispatchBay, DispatchHousing, DispatchShutter, FactoryFloor, OreContainer, OreMiner, ScannerBay, ScannerHousing, ScannerSweep } from './ConveyorSceneArt'
 import { conveyorSceneBounds, conveyorStep } from './conveyorProjection'
 import { getDispatchFrame } from './dispatchMotion'
 import './conveyor.css'
@@ -16,10 +17,11 @@ const minerReadings: Record<MinerStatus, string> = {
 const { x, y, width, height } = conveyorSceneBounds
 const viewBox = `${x} ${y} ${width} ${height}`
 
-export function ConveyorView({ items, nextItems, minerStatus, shippedId, shippedCount, running, progressAt }: {
+export function ConveyorView({ items, nextItems, minerStatus, scannerItem, shippedId, shippedCount, running, progressAt }: {
   items: readonly ConveyorItem[]
   nextItems: readonly ConveyorItem[]
   minerStatus: MinerStatus
+  scannerItem?: FactoryItem
   shippedId: string | undefined
   shippedCount: number
   running: boolean
@@ -31,6 +33,11 @@ export function ConveyorView({ items, nextItems, minerStatus, shippedId, shipped
   const intake = items.find(item => item.position === conveyorLength - 1 && !nextItems.some(next => next.id === item.id))
   const takingIn = intake !== undefined
   const minerReading = minerReadings[minerStatus]
+  const scanning = scannerItem?.inspectionStatus === 'inspecting'
+  const inspected = scannerItem?.inspectionStatus === 'passed'
+  const scannerReading = scanning || inspected
+    ? `${scannerItem.id} ${scanning ? '検品中' : '検品完了'} ${scannerItem.inspectionTicks}/${inspectionDuration}`
+    : '待機'
   const shipmentReading = shipped ? `${shippedId} を回収` : takingIn ? `${intake.id} 搬入中` : '回収待ち'
 
   useLayoutEffect(() => {
@@ -66,9 +73,9 @@ export function ConveyorView({ items, nextItems, minerStatus, shippedId, shipped
         aria-labelledby={`${id}-title`}
         aria-describedby={`${id}-description`}
       >
-        <title id={`${id}-title`}>採掘機、8マスのコンベア、出荷ゲート</title>
+        <title id={`${id}-title`}>採掘機、8マスのコンベア、検品機、出荷ゲート</title>
         <desc id={`${id}-description`}>
-          {`採掘機は${minerReading}。出荷ゲートは${shipmentReading}。`}
+          {`採掘機は${minerReading}。検品機は${scannerPosition + 1}マス目で${scannerReading}。出荷ゲートは${shipmentReading}。`}
           {items.length === 0 ? 'コンベア上にコンテナはありません。'
             : items.map(({ id, position }) => `${id} は ${position + 1} マス目`).join('、')}
         </desc>
@@ -76,6 +83,7 @@ export function ConveyorView({ items, nextItems, minerStatus, shippedId, shipped
         <FactoryFloor id={id} />
         <BeltLine id={id} />
         <OreMiner producing={minerStatus === 'supplied'} blocked={minerStatus === 'blocked'} />
+        <ScannerBay />
         <DispatchBay shipped={shipped} />
 
         {items.map(item => {
@@ -98,6 +106,8 @@ export function ConveyorView({ items, nextItems, minerStatus, shippedId, shipped
             </g>
           </g>
         )}
+        {scanning && <ScannerSweep returning={scannerItem.inspectionTicks > 0} />}
+        <ScannerHousing status={scanning ? 'inspecting' : inspected ? 'passed' : 'waiting'} />
         <DispatchShutter id={id} />
         <DispatchHousing shippedCount={shippedCount} shipped={shipped} />
 
@@ -106,6 +116,12 @@ export function ConveyorView({ items, nextItems, minerStatus, shippedId, shipped
           <circle cx="69" cy="71" r="2.5" />
           <text className="conveyor-equipment-name">採掘機</text>
           <text y="25" className="conveyor-equipment-status">{minerReading}</text>
+        </g>
+        <g className="conveyor-diagram-label" transform="translate(308 -111)" aria-hidden="true">
+          <path d="M0 43h19l-23 39" />
+          <circle cx="-4" cy="82" r="2.5" />
+          <text className="conveyor-equipment-name">検品機</text>
+          <text y="25" className="conveyor-equipment-status">{scannerReading}</text>
         </g>
         <g className="conveyor-diagram-label" transform="translate(800 23)" aria-hidden="true">
           <path d="M0 43h-19l-31 33" />
@@ -116,6 +132,7 @@ export function ConveyorView({ items, nextItems, minerStatus, shippedId, shipped
       </svg>
       <div className="conveyor-mobile-readings" aria-hidden="true">
         <div><strong>採掘機</strong><span>{minerReading}</span></div>
+        <div><strong>検品機</strong><span>{scannerReading}</span></div>
         <div><strong>出荷ゲート</strong><span>{shipmentReading}</span></div>
         <div className="conveyor-mobile-loads">
           <strong>搬送中</strong>

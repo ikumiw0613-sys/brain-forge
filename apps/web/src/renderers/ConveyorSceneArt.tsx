@@ -1,4 +1,5 @@
 import { conveyorLength } from '../features/game/conveyor'
+import { scannerPosition } from '../features/game/factory'
 import { conveyorFaceAngle, conveyorSceneBounds, floorTransform, projectFactory, projectedPoints as points, projectedTranslate as translate } from './conveyorProjection'
 import { shutterHeight } from './dispatchMotion'
 
@@ -160,6 +161,50 @@ export function OreMiner({ producing, blocked }: { producing: boolean; blocked: 
       </g>
       {producing && <polyline className="conveyor-equipment-pulse" points={points([-.49, -.29, 73], [-.12, -.34, 57], [-.12, .34, 57])}
         fill="none" stroke="#8df5ff" strokeWidth="3" />}
+    </g>
+  )
+}
+
+const scannerFrame = scannerPosition + .06
+
+export function ScannerBay() {
+  return (
+    <g className="conveyor-scanner-bay" aria-hidden="true">
+      <Block at={[scannerFrame - .06, -.96, 7]} size={[.42, .35, 7]} tones={paint.frame} />
+      <Block at={[scannerFrame, -.9, 14]} size={[.3, .24, 88]} tones={paint.housing} />
+      <polyline points={points([scannerPosition, -.56, beltHeight + 1], [scannerPosition + 1, -.56, beltHeight + 1])}
+        fill="none" stroke="#6daeba" strokeWidth="1.8" />
+    </g>
+  )
+}
+
+export function ScannerSweep({ returning }: { returning: boolean }) {
+  const along = scannerPosition + .28
+  const height = beltHeight + 37
+  return (
+    <g className="conveyor-scanner-sweep" data-returning={returning} aria-hidden="true">
+      <polygon points={points([along - .05, -.27, height], [along + .05, -.27, height],
+        [along + .05, .27, height], [along - .05, .27, height])} fill="#79e6f0" opacity=".48" />
+      <polyline points={points([along, -.31, height], [along, .31, height])} stroke="#b9faff" strokeWidth="2.5" />
+    </g>
+  )
+}
+
+export function ScannerHousing({ status }: { status: 'waiting' | 'inspecting' | 'passed' }) {
+  return (
+    <g className="conveyor-scanner-housing" data-status={status} aria-hidden="true">
+      <Block at={[scannerFrame - .06, .64, 7]} size={[.43, .38, 7]} tones={paint.frame} />
+      <Block at={[scannerFrame, .69, 14]} size={[.3, .25, 88]} tones={paint.housing} />
+      <Block at={[scannerFrame, -.9, 102]} size={[.48, 1.84, 14]} tones={paint.steel} />
+      <Block at={[scannerPosition + .33, -.32, 97]} size={[.42, .64, 10]} tones={paint.housing} />
+      <polyline className="conveyor-scanner-emitter" points={points([scannerPosition + .43, .322, 101], [scannerPosition + .68, .322, 101])}
+        strokeWidth="2.8" strokeLinecap="round" />
+      <g transform={`${translate([scannerPosition + .22, .95, 76])} rotate(${conveyorFaceAngle})`}>
+        <rect x="-15" y="-10" width="30" height="22" rx="3" fill="#15263a" stroke="#829aaf" />
+        <circle className="conveyor-scanner-lamp" cx="-7" r="3" />
+        <path d="M1-4h7M1 1h7M1 6h7" stroke="#708a9f" strokeWidth="1.2" />
+        {status === 'passed' && <circle className="conveyor-equipment-pulse conveyor-scanner-complete" cx="-7" r="7" fill="#b5fbff" />}
+      </g>
     </g>
   )
 }

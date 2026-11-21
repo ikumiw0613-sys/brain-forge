@@ -56,6 +56,9 @@
 
 .conveyor-controls .mission-readings dt { font-size: .78rem; }
 .conveyor-controls .mission-readings dd { font-variant-numeric: tabular-nums; }
+.conveyor-inspection { grid-column: 1 / -1; min-width: 0; }
+.conveyor-inspection .panel-heading { margin: 2px 0 8px; }
+.conveyor-controls .conveyor-inspection .mission-readings { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .conveyor-controls .factory-status { color: #ffcf9d; border-color: #70563f; background: #2d2727; }
 .conveyor-controls .factory-status[data-running='true'] { color: #a3edf3; border-color: #44747d; background: #19333e; }
 .conveyor-controls .factory-status[data-running='true']::before { background: currentColor; }
@@ -110,6 +113,7 @@
 }
 
 @media (max-width: 540px) {
-  .conveyor-controls .mission-readings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .conveyor-controls .mission-readings,
+  .conveyor-controls .conveyor-inspection .mission-readings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .conveyor-operation { grid-template-columns: minmax(0, 1fr); }
 }

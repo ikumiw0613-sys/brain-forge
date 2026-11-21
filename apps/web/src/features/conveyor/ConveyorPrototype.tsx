@@ -1,17 +1,21 @@
 import { ConveyorView } from '../../renderers/ConveyorView'
 import { conveyorSpeeds, getConveyorTickMs } from '../game/conveyor'
-import { productionInterval, shippingCapacity, shippingWindow } from '../game/factory'
+import { inspectionDuration, productionInterval, scannerPosition, shippingCapacity, shippingWindow } from '../game/factory'
 import { useConveyor } from './useConveyor'
 import './prototype.css'
 
 export function ConveyorPrototype() {
   const conveyor = useConveyor()
-  const { items, running, speed, tick, producedCount, shippedCount, minerStatus, recentShipments } = conveyor.state
+  const { items, running, speed, tick, producedCount, shippedCount, inspectedCount, minerStatus, recentShipments } = conveyor.state
   const action = running ? '一時停止' : conveyor.hasStarted ? '再開' : '開始'
   const status = running ? '運転中' : conveyor.hasStarted ? '一時停止中' : '停止中'
   const lastShipment = recentShipments.at(-1)
   const measuredTicks = Math.min(tick, shippingWindow)
   const shippingRate = measuredTicks === 0 ? '—' : (recentShipments.length / measuredTicks).toFixed(2)
+  const scannerItem = items.find(item => item.position === scannerPosition)
+  const scannerStatus = scannerItem?.inspectionStatus === 'inspecting' ? '検品中'
+    : scannerItem?.inspectionStatus === 'passed' ? '検品完了' : '待機'
+  const waitingCount = items.filter(item => item.position < scannerPosition && item.inspectionStatus === 'pending').length
 
   return (
     <div className="conveyor-prototype">
@@ -24,7 +28,7 @@ export function ConveyorPrototype() {
 
       <main className="page-width stage">
         <header className="stage-title">
-          <span className="stage-code">Visual Prototype 01</span>
+          <span className="stage-code">Prototype 03</span>
           <h1>コンベア搬送システム</h1>
         </header>
 
@@ -33,6 +37,7 @@ export function ConveyorPrototype() {
             items={items}
             nextItems={conveyor.nextItems}
             minerStatus={minerStatus}
+            scannerItem={scannerItem}
             shippedId={lastShipment?.tick === tick ? lastShipment.id : undefined}
             shippedCount={shippedCount}
             running={running}
@@ -89,6 +94,17 @@ export function ConveyorPrototype() {
                 </div>
               </div>
             </div>
+
+            <section className="conveyor-inspection" aria-labelledby="conveyor-inspection-title">
+              <h3 className="panel-heading" id="conveyor-inspection-title">自動検品</h3>
+              <dl className="mission-readings">
+                <div><dt>検品機の状態</dt><dd>{scannerStatus}</dd></div>
+                <div><dt>検品対象</dt><dd>{scannerItem?.id ?? '—'}</dd></div>
+                <div><dt>検品進捗</dt><dd>{scannerItem ? `${scannerItem.inspectionTicks}/${inspectionDuration}` : '—'}</dd></div>
+                <div><dt>検品完了数</dt><dd>{inspectedCount} 個</dd></div>
+                <div><dt>検品待ち</dt><dd>{waitingCount} 個</dd></div>
+              </dl>
+            </section>
           </section>
         </div>
       </main>

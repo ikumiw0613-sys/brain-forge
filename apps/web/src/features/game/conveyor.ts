@@ -41,14 +41,14 @@ export function tickConveyor(state: ConveyorState): ConveyorState {
   return { ...state, items: moveConveyorItems(state.items), tick: state.tick + 1 }
 }
 
-export function moveConveyorItems(current: readonly ConveyorItem[]): ConveyorItem[] {
+export function moveConveyorItems<Item extends ConveyorItem>(current: readonly Item[], canMove: (item: Item) => boolean = () => true): Item[] {
   const items = [...current].sort((left, right) => left.position - right.position)
   // The next item has already moved, so it may have freed a cell this tick.
   let nextOccupied = conveyorLength
   for (let index = items.length - 1; index >= 0; index--) {
     const item = items[index]
     const destination = item.position + 1
-    if (destination < nextOccupied) items[index] = { ...item, position: destination }
+    if (destination < nextOccupied && canMove(item)) items[index] = { ...item, position: destination }
     nextOccupied = items[index].position
   }
 
