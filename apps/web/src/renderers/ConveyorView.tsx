@@ -2,6 +2,8 @@ import { useId, useLayoutEffect, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import { conveyorLength } from '../features/game/conveyor'
 import type { ConveyorItem } from '../features/game/conveyor'
+import type { MinerStatus } from '../features/game/factory'
+import { ShippingGate } from './FactoryEquipment'
 import './factory.css'
 import './conveyor.css'
 
@@ -9,15 +11,23 @@ const trackLeft = 80
 const cellWidth = 100
 const trackWidth = conveyorLength * cellWidth
 const cells = Array.from({ length: conveyorLength }, (_, index) => index)
+const minerReadings: Record<MinerStatus, string> = {
+  waiting: '供給待機',
+  supplied: '供給完了',
+  blocked: '入口満杯・供給待機',
+}
 
-export function ConveyorView({ items, nextItems, running, progressAt }: {
+export function ConveyorView({ items, nextItems, minerStatus, shippedId, running, progressAt }: {
   items: readonly ConveyorItem[]
   nextItems: readonly ConveyorItem[]
+  minerStatus: MinerStatus
+  shippedId: string | undefined
   running: boolean
   progressAt: (now: number) => number
 }) {
   const id = useId()
   const scene = useRef<SVGSVGElement>(null)
+  const shipmentReading = shippedId === undefined ? '回収待ち' : `${shippedId} を回収`
 
   useLayoutEffect(() => {
     const svg = scene.current!
@@ -44,14 +54,16 @@ export function ConveyorView({ items, nextItems, running, progressAt }: {
           ref={scene}
           className="factory-scene conveyor-scene"
           style={{ '--conveyor-cell-width': `${cellWidth}px` } as CSSProperties}
-          viewBox="0 0 960 302"
+          viewBox="-112 0 1144 302"
           role="img"
           aria-labelledby={`${id}-title`}
           aria-describedby={`${id}-description`}
         >
-          <title id={`${id}-title`}>左から右に搬送する8マスのコンベア</title>
+          <title id={`${id}-title`}>採掘機、8マスのコンベア、出荷ゲート</title>
           <desc id={`${id}-description`}>
-            {items.map(({ id, position }) => `${id} は ${position + 1} マス目`).join('、')}
+            {`採掘機は${minerReadings[minerStatus]}。出荷ゲートは${shipmentReading}。`}
+            {items.length === 0 ? 'コンベア上にコンテナはありません。'
+              : items.map(({ id, position }) => `${id} は ${position + 1} マス目`).join('、')}
           </desc>
           <defs>
             <pattern id={`${id}-floor`} width="42" height="17" patternUnits="userSpaceOnUse" patternTransform="skewX(38)">
@@ -69,10 +81,10 @@ export function ConveyorView({ items, nextItems, running, progressAt }: {
           </defs>
 
           <g strokeLinejoin="round">
-            <path d="M38 206H877l48 42v10H86l-48-42Z" fill="#0e1317" stroke="#39464c" />
-            <path d="M38 206H877l48 42H86Z" fill="#1c252b" stroke="#46565e" />
-            <path d="M38 206H877l48 42H86Z" fill={`url(#${id}-floor)`} />
-            <path d="M86 253h839" stroke="#46565e" />
+            <path d="M-100 206H970l48 42v10H-52l-48-42Z" fill="#0e1317" stroke="#39464c" />
+            <path d="M-100 206H970l48 42H-52Z" fill="#1c252b" stroke="#46565e" />
+            <path d="M-100 206H970l48 42H-52Z" fill={`url(#${id}-floor)`} />
+            <path d="M-52 253h1070" stroke="#46565e" />
 
             <g fill="#303d44" stroke="#6a787d">
               <path d="M108 211h16v25h-16Zm242 0h16v25h-16Zm242 0h16v25h-16Zm242 0h16v25h-16Z" />
@@ -97,33 +109,88 @@ export function ConveyorView({ items, nextItems, running, progressAt }: {
                 <text className="conveyor-cell-number" x="42" y="281">{cell + 1}</text>
               </g>
             ))}
-            <path d="M878 142h12v51l-14 18h-9v-24l11-27Z" fill="#38464b" stroke="#8a9794" />
-            <path d="M879 145h8v41l-8 10Z" fill={`url(#${id}-hazard)`} />
           </g>
 
+          <OreMiner hazardPattern={`${id}-hazard`} producing={minerStatus === 'supplied'} />
+          <g className="conveyor-equipment-label" transform="translate(-12 37)">
+            <text className="conveyor-equipment-name">採掘機</text>
+            <text y="21" className="conveyor-equipment-status">{minerReadings[minerStatus]}</text>
+          </g>
           <g fill="#c4cfd3" stroke="#c4cfd3">
             <text x="80" y="60" stroke="none" fontSize="15" fontWeight="700">搬送方向</text>
             <path d="M156 55h91m-7-5 7 5-7 5" fill="none" />
           </g>
 
           {items.map(item => {
-            const nextPosition = nextItems.find(({ id }) => id === item.id)?.position ?? item.position
+            const next = nextItems.find(({ id }) => id === item.id)
             return (
-              <g key={item.id} transform={`translate(${trackLeft + (item.position + 0.5) * cellWidth} 115)`}>
-                <g className={nextPosition === item.position ? undefined : 'conveyor-item-moving'}>
-                  <path d="M-32 55h64v6h-64z" fill="#0a1014" opacity=".65" />
-                  <path d="M-32 9l10-9h62l-10 9z" fill="#677881" stroke="#91a0a2" />
-                  <path d="M30 9l10-9v46l-10 9z" fill="#26343c" stroke="#76878c" />
-                  <rect x="-32" y="9" width="62" height="46" rx="2" fill="#3a4951" stroke="#8e9fa3" />
-                  <rect x="-26" y="15" width="50" height="34" rx="2" fill="#1a262d" stroke="#566971" />
-                  <path d="M-17 4h37m16 10v24" fill="none" stroke="#8a9a9d" />
-                  <text className="conveyor-container-id" x="-1" y="38">{item.id}</text>
-                </g>
-              </g>
+              <ContainerDrawing
+                key={item.id}
+                item={item}
+                moving={next !== undefined && next.position !== item.position}
+                entering={minerStatus === 'supplied' && item.position === 0}
+              />
             )
           })}
+          {shippedId !== undefined && (
+            <g className="conveyor-item-exiting" aria-hidden="true">
+              <ContainerDrawing item={{ id: shippedId, position: conveyorLength - 1 }} />
+            </g>
+          )}
+          <g transform="translate(20 -82)">
+            <ShippingGate hazardPattern={`${id}-hazard`} open={shippedId !== undefined} />
+          </g>
+          {shippedId !== undefined && <circle className="conveyor-equipment-pulse" cx="933" cy="95" r="4" fill="#abe0e7" />}
+          <g className="conveyor-equipment-label" transform="translate(927 37)">
+            <text className="conveyor-equipment-name">出荷ゲート</text>
+            <text y="21" className="conveyor-equipment-status">{shipmentReading}</text>
+          </g>
         </svg>
       </div>
     </section>
+  )
+}
+
+function ContainerDrawing({ item, moving = false, entering = false }: {
+  item: ConveyorItem
+  moving?: boolean
+  entering?: boolean
+}) {
+  return (
+    <g className="conveyor-container" transform={`translate(${trackLeft + (item.position + 0.5) * cellWidth} 115)`}>
+      <g className={moving ? 'conveyor-item-moving' : undefined}>
+        <g className={entering ? 'conveyor-item-entering' : undefined}>
+          <path d="M-32 55h64v6h-64z" fill="#0a1014" opacity=".65" />
+          <path d="M-32 9l10-9h62l-10 9z" fill="#677881" stroke="#91a0a2" />
+          <path d="M30 9l10-9v46l-10 9z" fill="#26343c" stroke="#76878c" />
+          <rect x="-32" y="9" width="62" height="46" rx="2" fill="#3a4951" stroke="#8e9fa3" />
+          <rect x="-26" y="15" width="50" height="34" rx="2" fill="#1a262d" stroke="#566971" />
+          <path d="M-17 4h37m16 10v24" fill="none" stroke="#8a9a9d" />
+          <text className="conveyor-container-id" x="-1" y="38" textLength={item.id.length > 5 ? 43 : undefined} lengthAdjust="spacingAndGlyphs">{item.id}</text>
+        </g>
+      </g>
+    </g>
+  )
+}
+
+function OreMiner({ hazardPattern, producing }: { hazardPattern: string; producing: boolean }) {
+  return (
+    <g transform="translate(-78 83)" strokeLinejoin="round">
+      <path d="M0 130h121l16-15H17Z" fill="#38474e" stroke="#819198" />
+      <path d="M0 130h121v11H0Z" fill="#202a31" stroke="#58686f" />
+      <path d="M12 36 34 8h65l21 20v92H12Z" fill="#29363d" stroke="#7e8e94" />
+      <path d="M34 8h65l21 20H54Z" fill="#687977" stroke="#9da49a" />
+      <path d="M12 36h68l19 19v65H12Z" fill="#39464c" stroke="#819198" />
+      <path d="M21 49h47l11 12v45H21Z" fill="#11191e" stroke="#8a9a9d" />
+      <path d="M34 42h24v23H34zM37 65h18L46 93Z" fill="#b9803d" stroke="#e4b36f" />
+      <path d="m23 106 13-17 12 8 13-13 17 22Z" fill="#63757d" stroke="#92a4a9" />
+      <path d="M72 89h32l57 19-13 9-53-14H72Z" fill="#46575e" stroke="#8a9a9d" />
+      <path d="M72 89h32v8H72Z" fill={`url(#${hazardPattern})`} />
+      <rect x="23" y="22" width="50" height="12" rx="2" fill="#182228" stroke="#52616a" />
+      <path d="M29 28h18m5 0h13" stroke="#d1994b" strokeWidth="2" />
+      {producing && (
+        <path className="conveyor-equipment-pulse" d="m30 80-7-5m39 5 7-5m-7 14h6M28 28h38" stroke="#f8ce88" strokeWidth="2.5" />
+      )}
+    </g>
   )
 }

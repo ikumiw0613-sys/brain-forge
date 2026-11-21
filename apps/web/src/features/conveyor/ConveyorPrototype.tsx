@@ -1,13 +1,17 @@
 import { ConveyorView } from '../../renderers/ConveyorView'
 import { conveyorSpeeds, getConveyorTickMs } from '../game/conveyor'
+import { productionInterval, shippingCapacity, shippingWindow } from '../game/factory'
 import { useConveyor } from './useConveyor'
 import './prototype.css'
 
 export function ConveyorPrototype() {
   const conveyor = useConveyor()
-  const { items, running, speed, tick } = conveyor.state
+  const { items, running, speed, tick, producedCount, shippedCount, minerStatus, recentShipments } = conveyor.state
   const action = running ? '一時停止' : conveyor.hasStarted ? '再開' : '開始'
   const status = running ? '運転中' : conveyor.hasStarted ? '一時停止中' : '停止中'
+  const lastShipment = recentShipments.at(-1)
+  const measuredTicks = Math.min(tick, shippingWindow)
+  const shippingRate = measuredTicks === 0 ? '—' : (recentShipments.length / measuredTicks).toFixed(2)
 
   return (
     <>
@@ -20,7 +24,7 @@ export function ConveyorPrototype() {
 
       <main className="page-width stage">
         <header className="stage-title">
-          <span className="stage-code">Prototype 01</span>
+          <span className="stage-code">Prototype 02</span>
           <h1>コンベア搬送システム</h1>
         </header>
 
@@ -28,6 +32,8 @@ export function ConveyorPrototype() {
           <ConveyorView
             items={items}
             nextItems={conveyor.nextItems}
+            minerStatus={minerStatus}
+            shippedId={lastShipment?.tick === tick ? lastShipment.id : undefined}
             running={running}
             progressAt={conveyor.progressAt}
           />
@@ -49,6 +55,15 @@ export function ConveyorPrototype() {
               <div className="conveyor-tick">
                 <dt>現在の Tick</dt>
                 <dd><strong>{tick}</strong></dd>
+              </div>
+              <div><dt>生産数</dt><dd>{producedCount} 個</dd></div>
+              <div><dt>出荷数</dt><dd>{shippedCount} 個</dd></div>
+              <div><dt>コンベア上のコンテナ</dt><dd>{items.length} 個</dd></div>
+              <div><dt>生産間隔</dt><dd>{productionInterval} Tick</dd></div>
+              <div><dt>ゲートの処理能力</dt><dd>最大 {shippingCapacity} 個 / Tick</dd></div>
+              <div>
+                <dt>出荷ペース<br />直近 {measuredTicks || shippingWindow} Tick</dt>
+                <dd>{shippingRate} 個 / Tick</dd>
               </div>
             </dl>
 

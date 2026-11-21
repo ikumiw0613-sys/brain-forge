@@ -64,7 +64,7 @@ uv sync --directory apps/api --python 3.13.15 --locked
 
 ブラウザーで Web を開くと工場画面が表示され、API の表示が「接続確認中」から「正常接続」に変わります。通信に失敗した場合は API の起動とポートを確認し、「再確認」を押してください。各サーバーは起動したターミナルの Ctrl+C で停止できます。
 
-コンベア搬送の試作は、`pnpm.cmd dev:web` で Web を起動し、[コンベア搬送システム](http://localhost:5173/prototypes/conveyor/) を開くと試せます。API や Supabase の設定は不要です。初期状態は停止中で、速度は 1 倍（500 ms / Tick）です。
+コンベア搬送の試作は、`pnpm.cmd dev:web` で Web を起動し、[コンベア搬送システム](http://localhost:5173/prototypes/conveyor/) を開くと試せます。Prototype 02 は空のラインから始まり、2 Tickごとに採掘機がコンテナを供給し、出荷ゲートが右端から回収します。初期状態は停止中で、速度は 1 倍（500 ms / Tick）です。API や Supabase の設定は不要です。
 
 ```powershell
 Invoke-RestMethod http://localhost:8000/api/v1/health | ConvertTo-Json -Compress

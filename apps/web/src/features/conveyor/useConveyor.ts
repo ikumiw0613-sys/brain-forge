@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
-import { createConveyorState, getConveyorTickMs, setConveyorRunning, setConveyorSpeed, tickConveyor } from '../game/conveyor'
-import type { ConveyorSpeed, ConveyorState } from '../game/conveyor'
+import { getConveyorTickMs } from '../game/conveyor'
+import type { ConveyorSpeed } from '../game/conveyor'
+import { createFactoryState, tickFactory } from '../game/factory'
+import type { FactoryState } from '../game/factory'
 
 type Playback = {
-  state: ConveyorState
+  state: FactoryState
   hasStarted: boolean
   progress: number
   resumedAt: number | null
 }
 
 function createPlayback(): Playback {
-  return { state: createConveyorState(), hasStarted: false, progress: 0, resumedAt: null }
+  return { state: createFactoryState(), hasStarted: false, progress: 0, resumedAt: null }
 }
 
 function getProgress(playback: Playback, now: number): number {
@@ -43,7 +45,7 @@ export function useConveyor() {
       if (now >= deadline) {
         publish({
           ...frame,
-          state: tickConveyor(frame.state),
+          state: tickFactory(frame.state),
           progress: 0,
           // Keep the normal cadence and avoid bursts after a stalled tab.
           resumedAt: now - deadline >= tickMs ? now : deadline,
@@ -53,10 +55,8 @@ export function useConveyor() {
     }, Math.max(0, Math.ceil(deadline - performance.now())))
   }
 
-  function updateState(state: ConveyorState) {
+  function updateState(state: FactoryState) {
     const frame = current.current
-    if (state === frame.state) return
-
     const now = performance.now()
     publish({
       ...frame,
@@ -71,15 +71,16 @@ export function useConveyor() {
   return {
     state: playback.state,
     // Preview the next positions for drawing. The timer commits them at the tick boundary.
-    nextItems: tickConveyor(setConveyorRunning(playback.state, true)).items,
+    nextItems: tickFactory({ ...playback.state, running: true }).items,
     hasStarted: playback.hasStarted,
     progressAt: (now: number) => getProgress(playback, now),
     toggleRunning() {
       const { state } = current.current
-      updateState(setConveyorRunning(state, !state.running))
+      updateState({ ...state, running: !state.running })
     },
     setSpeed(speed: ConveyorSpeed) {
-      updateState(setConveyorSpeed(current.current.state, speed))
+      const { state } = current.current
+      if (state.speed !== speed) updateState({ ...state, speed })
     },
     reset() {
       publish(createPlayback())

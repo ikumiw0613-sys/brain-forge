@@ -1,8 +1,15 @@
-.conveyor-scene { min-width: 640px; }
+.conveyor-scene { min-width: 760px; }
 
-.conveyor-item-moving, .conveyor-treads {
+.conveyor-item-moving, .conveyor-item-exiting, .conveyor-treads {
   transform: translateX(calc(var(--conveyor-cell-width) * var(--conveyor-progress, 0)));
 }
+
+.conveyor-item-entering { opacity: min(1, calc(var(--conveyor-progress, 0) * 4)); }
+.conveyor-item-exiting, .conveyor-equipment-pulse { opacity: max(0, calc(1 - var(--conveyor-progress, 0) * 2)); }
+
+.conveyor-equipment-label { text-anchor: middle; font-weight: 700; }
+.conveyor-equipment-name { fill: #ebeff0; font-size: 18px; }
+.conveyor-equipment-status { fill: #c4cfd3; font-size: 16px; }
 
 .conveyor-container-id, .conveyor-cell-number {
   text-anchor: middle;
@@ -14,4 +21,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .conveyor-item-moving, .conveyor-treads { transform: none; }
+  .conveyor-item-entering { opacity: 1; }
+  .conveyor-item-exiting, .conveyor-equipment-pulse { display: none; }
 }

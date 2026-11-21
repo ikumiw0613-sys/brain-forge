@@ -38,7 +38,11 @@ export function getConveyorTickMs(speed: ConveyorSpeed): number {
 export function tickConveyor(state: ConveyorState): ConveyorState {
   if (!state.running) return state
 
-  const items = [...state.items].sort((left, right) => left.position - right.position)
+  return { ...state, items: moveConveyorItems(state.items), tick: state.tick + 1 }
+}
+
+export function moveConveyorItems(current: readonly ConveyorItem[]): ConveyorItem[] {
+  const items = [...current].sort((left, right) => left.position - right.position)
   // The next item has already moved, so it may have freed a cell this tick.
   let nextOccupied = conveyorLength
   for (let index = items.length - 1; index >= 0; index--) {
@@ -48,5 +52,5 @@ export function tickConveyor(state: ConveyorState): ConveyorState {
     nextOccupied = items[index].position
   }
 
-  return { ...state, items, tick: state.tick + 1 }
+  return items
 }
