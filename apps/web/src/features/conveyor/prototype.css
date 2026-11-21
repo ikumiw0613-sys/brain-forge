@@ -1,0 +1,54 @@
+.conveyor-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 288px;
+  align-items: start;
+  gap: 18px;
+}
+
+.conveyor-controls .mission-readings { margin-top: 12px; }
+.conveyor-controls .factory-status[data-running='true'] { color: #b5e1b5; border-color: #52694e; background: #24332a; }
+.conveyor-controls .factory-status[data-running='true']::before { background: currentColor; }
+.conveyor-controls .conveyor-tick { align-items: baseline; }
+.conveyor-tick strong { color: var(--accent); font: 700 2rem/1 var(--mono); }
+
+.conveyor-speed {
+  min-width: 0;
+  margin: 17px 0;
+  padding: 0;
+  border: 0;
+}
+
+.conveyor-speed legend, .conveyor-speed p { padding: 0; color: var(--muted); font-size: .85rem; }
+.conveyor-speed p { margin-top: 8px; font-family: var(--mono); }
+
+.conveyor-speed-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.conveyor-speed-options label { position: relative; }
+.conveyor-speed-options input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+
+.conveyor-speed-options span {
+  display: block;
+  padding: 8px 4px;
+  border: 1px solid #596971;
+  border-radius: 4px;
+  background: #26333a;
+  font: 700 .9rem/1.4 var(--mono);
+  text-align: center;
+}
+
+.conveyor-speed-options input:hover + span { background: #2d3b44; }
+.conveyor-speed-options input:checked + span { color: var(--accent); border-color: #a77b45; background: #352a1d; }
+.conveyor-speed-options input:focus-visible + span { outline: 2px solid #e6f1f4; outline-offset: 3px; }
+
+.conveyor-commands { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.conveyor-run:hover { background: #ffd48e; }
+.conveyor-commands .game-actions button:hover { background: #2d3b44; }
+
+@media (max-width: 1000px) {
+  .conveyor-layout { grid-template-columns: minmax(0, 1fr); }
+}

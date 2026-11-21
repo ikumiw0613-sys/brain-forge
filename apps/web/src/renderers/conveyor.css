@@ -1,0 +1,17 @@
+.conveyor-scene { min-width: 640px; }
+
+.conveyor-item-moving, .conveyor-treads {
+  transform: translateX(calc(var(--conveyor-cell-width) * var(--conveyor-progress, 0)));
+}
+
+.conveyor-container-id, .conveyor-cell-number {
+  text-anchor: middle;
+  font: 700 15px var(--mono);
+}
+
+.conveyor-container-id { fill: #f8ce88; }
+.conveyor-cell-number { fill: #aebcc1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .conveyor-item-moving, .conveyor-treads { transform: none; }
+}
