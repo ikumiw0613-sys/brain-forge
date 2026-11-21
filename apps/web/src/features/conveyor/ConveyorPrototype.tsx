@@ -1,4 +1,5 @@
 import { ConveyorView } from '../../renderers/ConveyorView'
+import { CalibrationPanel } from '../calibration/CalibrationPanel'
 import { conveyorSpeeds, getConveyorTickMs } from '../game/conveyor'
 import { inspectionDuration, productionInterval, scannerPosition, shippingCapacity, shippingWindow } from '../game/factory'
 import { useConveyor } from './useConveyor'
@@ -28,11 +29,12 @@ export function ConveyorPrototype() {
 
       <main className="page-width stage">
         <header className="stage-title">
-          <span className="stage-code">Prototype 03</span>
+          <span className="stage-code">Prototype 04</span>
           <h1>コンベア搬送システム</h1>
         </header>
 
         <div className="conveyor-layout">
+          <CalibrationPanel />
           <ConveyorView
             items={items}
             nextItems={conveyor.nextItems}

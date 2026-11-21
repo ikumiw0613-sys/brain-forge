@@ -6,6 +6,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ConveyorView } from '../../renderers/ConveyorView'
 import { ConveyorPrototype } from './ConveyorPrototype'
 
+vi.mock('../../lib/supabase', () => ({
+  supabase: { client: null },
+  ensureSupabaseSession: vi.fn(),
+  getSupabaseSession: vi.fn(),
+  refreshSupabaseSession: vi.fn(),
+}))
+
 let container: HTMLDivElement
 let root: Root | undefined
 
@@ -48,7 +55,7 @@ async function advance(ms: number) {
 }
 
 const tick = () => container.querySelector('.conveyor-tick strong')?.textContent
-const status = () => container.querySelector('[role="status"]')?.textContent
+const status = () => container.querySelector('.conveyor-controls [role="status"]')?.textContent
 const positions = () => container.querySelector('svg desc')?.textContent
 const scene = () => container.querySelector<SVGSVGElement>('.conveyor-scene')!
 const progress = () => Number(scene().style.getPropertyValue('--conveyor-progress'))

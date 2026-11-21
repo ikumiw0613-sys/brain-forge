@@ -1,5 +1,6 @@
 import { ApiStatus } from './components/ApiStatus'
 import { SupabaseStatus } from './components/SupabaseStatus'
+import { factoryPath, isCalibrationLaunch } from './features/calibration/navigation'
 import { GameLayout } from './features/game/GameLayout'
 import { st001 } from './features/stages/st001'
 
@@ -13,7 +14,7 @@ export function App() {
         </div>
       </header>
 
-      <GameLayout stage={st001} />
+      <GameLayout stage={st001} factoryReturnHref={isCalibrationLaunch(window.location.search) ? factoryPath : undefined} />
 
       <footer className="page-width connections" aria-labelledby="connections-title">
         <h2 id="connections-title">サービス接続状況</h2>

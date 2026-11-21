@@ -195,6 +195,25 @@ h1, h2, p, dl, dd { margin: 0; }
 .scan-button[aria-disabled='false']:hover { background: #ffd48e; }
 .scan-button[aria-disabled='true'] { border-color: #46545d; color: #b1bec3; background: #252e34; cursor: default; }
 .scan-button:focus-visible { outline: 2px solid #e6f1f4; outline-offset: 3px; }
+
+.calibration-context {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  background: var(--panel);
+  font-size: .85rem;
+}
+
+.calibration-context a { color: var(--accent); font-weight: 700; }
+.calibration-link { display: inline-flex; width: auto; align-items: center; justify-content: center; text-decoration: none; }
+.calibration-link:hover { filter: brightness(1.12); }
 .scan-hint { margin-top: 8px; font-size: .8rem; }
 
 .game-feedback, .game-result {

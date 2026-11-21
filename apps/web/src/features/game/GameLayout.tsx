@@ -12,7 +12,7 @@ type Stage = {
 
 const scanEffectDuration = 420
 
-export function GameLayout({ stage }: { stage: Stage }) {
+export function GameLayout({ stage, factoryReturnHref }: { stage: Stage; factoryReturnHref?: string }) {
   const game = useInspection(stage.id)
   const inspections = game.attempt?.scans ?? []
   const range = game.attempt?.candidate_range
@@ -42,6 +42,13 @@ export function GameLayout({ stage }: { stage: Stage }) {
         <h1>{stage.title}</h1>
       </header>
 
+      {factoryReturnHref && (
+        <div className="calibration-context">
+          <p>工場の検品ラインを校正するため、品質70以上になる最初のサンプルを特定します。</p>
+          {game.attempt?.status !== 'cleared' && <a href={factoryReturnHref}>工場へ戻る</a>}
+        </div>
+      )}
+
       <div className="game-grid">
         <FactoryView
           containerNumbers={stage.containerNumbers}
@@ -56,6 +63,7 @@ export function GameLayout({ stage }: { stage: Stage }) {
         <MissionPanel
           mission={stage.mission}
           game={game}
+          factoryReturnHref={factoryReturnHref}
           animating={animating}
           onScan={() => { if (!animating && game.scanSelected()) startEffect() }}
           onRetry={() => { if (game.retry() && game.issue?.retry.kind === 'scan') startEffect() }}
@@ -70,9 +78,10 @@ export function GameLayout({ stage }: { stage: Stage }) {
 
 const busyStatus = { initializing: '初期化中', loading: '挑戦を読み込み中', scanning: '検品処理中' }
 
-function MissionPanel({ mission, game, animating, onScan, onRetry, onSkip }: {
+function MissionPanel({ mission, game, factoryReturnHref, animating, onScan, onRetry, onSkip }: {
   mission: string
   game: ReturnType<typeof useInspection>
+  factoryReturnHref?: string
   animating: boolean
   onScan: () => void
   onRetry: () => void
@@ -130,6 +139,9 @@ function MissionPanel({ mission, game, animating, onScan, onRetry, onSkip }: {
           <h3 id="result-title">{succeeded ? 'ミッション成功' : 'ミッション失敗'}</h3>
           <p>{succeeded ? `${rangeText}に確定し、出荷ゲートが開きました。` : '検品回数を使い切り、候補が複数残りました。'}</p>
           <p>検品回数 {attempt.scans_used} 回</p>
+          {succeeded && factoryReturnHref && (
+            <a className="scan-button calibration-link" href={factoryReturnHref}>工場へ戻る</a>
+          )}
           <button type="button" onClick={game.restart} disabled={Boolean(busy || issue || animating)}>もう一度挑戦する</button>
         </section>
       )}

@@ -128,8 +128,12 @@ export function createGameApi(options: { baseUrl?: string; fetcher?: (request: R
     }), 'read', signal)
   }
 
-  function getProgress(signal?: AbortSignal) {
-    return execute(request => http.GET('/api/v1/me/progress', request), 'read', signal)
+  async function getProgress(signal?: AbortSignal): Promise<readonly Schemas['StageProgress'][]> {
+    const rows: unknown = await execute(request => http.GET('/api/v1/me/progress', request), 'read', signal)
+    if (!Array.isArray(rows) || !rows.every(isStageProgress)) {
+      throw new GameApiError('invalid_response', { retryable: true })
+    }
+    return rows
   }
 
   function createScanOperation(attemptId: string, containerIndex: number, expectedStep: number): ScanOperation {
@@ -153,6 +157,13 @@ export function createGameApi(options: { baseUrl?: string; fetcher?: (request: R
 }
 
 export const gameApi = createGameApi()
+
+function isStageProgress(row: unknown): row is Schemas['StageProgress'] {
+  return typeof row === 'object' && row !== null &&
+    'stage_id' in row && typeof row.stage_id === 'string' &&
+    'clear_count' in row && typeof row.clear_count === 'number' &&
+    'best_scans' in row && typeof row.best_scans === 'number'
+}
 
 function getErrorCode(error: unknown): string | undefined {
   if (typeof error === 'object' && error !== null && 'detail' in error &&
