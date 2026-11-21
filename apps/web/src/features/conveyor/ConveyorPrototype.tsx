@@ -14,7 +14,7 @@ export function ConveyorPrototype() {
   const shippingRate = measuredTicks === 0 ? '—' : (recentShipments.length / measuredTicks).toFixed(2)
 
   return (
-    <>
+    <div className="conveyor-prototype">
       <header className="site-header">
         <div className="page-width brand">
           <span className="insignia" aria-hidden="true"><i /><i /><i /></span>
@@ -24,7 +24,7 @@ export function ConveyorPrototype() {
 
       <main className="page-width stage">
         <header className="stage-title">
-          <span className="stage-code">Prototype 02</span>
+          <span className="stage-code">Visual Prototype 01</span>
           <h1>コンベア搬送システム</h1>
         </header>
 
@@ -34,6 +34,7 @@ export function ConveyorPrototype() {
             nextItems={conveyor.nextItems}
             minerStatus={minerStatus}
             shippedId={lastShipment?.tick === tick ? lastShipment.id : undefined}
+            shippedCount={shippedCount}
             running={running}
             progressAt={conveyor.progressAt}
           />
@@ -67,28 +68,30 @@ export function ConveyorPrototype() {
               </div>
             </dl>
 
-            <fieldset className="conveyor-speed">
-              <legend>搬送速度</legend>
-              <div className="conveyor-speed-options">
-                {conveyorSpeeds.map(option => (
-                  <label key={option}>
-                    <input type="radio" name="conveyor-speed" checked={speed === option} onChange={() => conveyor.setSpeed(option)} />
-                    <span>{option}倍</span>
-                  </label>
-                ))}
-              </div>
-              <p>1 Tick = {getConveyorTickMs(speed)} ms</p>
-            </fieldset>
+            <div className="conveyor-operation">
+              <fieldset className="conveyor-speed">
+                <legend>搬送速度</legend>
+                <div className="conveyor-speed-options">
+                  {conveyorSpeeds.map(option => (
+                    <label key={option}>
+                      <input type="radio" name="conveyor-speed" checked={speed === option} onChange={() => conveyor.setSpeed(option)} />
+                      <span>{option}倍</span>
+                    </label>
+                  ))}
+                </div>
+                <p>1 Tick = {getConveyorTickMs(speed)} ms</p>
+              </fieldset>
 
-            <div className="conveyor-commands">
-              <button type="button" className="scan-button conveyor-run" onClick={conveyor.toggleRunning}>{action}</button>
-              <div className="game-actions">
-                <button type="button" onClick={conveyor.reset}>リセット</button>
+              <div className="conveyor-commands">
+                <button type="button" className="scan-button conveyor-run" onClick={conveyor.toggleRunning}>{action}</button>
+                <div className="game-actions">
+                  <button type="button" onClick={conveyor.reset}>リセット</button>
+                </div>
               </div>
             </div>
           </section>
         </div>
       </main>
-    </>
+    </div>
   )
 }

@@ -1,23 +1,65 @@
-.conveyor-scene { min-width: 760px; }
+.conveyor-board { overflow: hidden; }
+
+.conveyor-board > .panel-heading {
+  min-height: 45px;
+  padding: 9px clamp(12px, 2vw, 20px);
+  border-bottom: 1px solid var(--border);
+}
+
+.conveyor-scene {
+  --conveyor-offset-x: calc(var(--conveyor-step-x) * var(--conveyor-progress, 0));
+  --conveyor-offset-y: calc(var(--conveyor-step-y) * var(--conveyor-progress, 0));
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 530px;
+  background: #0b1220;
+}
 
 .conveyor-item-moving, .conveyor-item-exiting, .conveyor-treads {
-  transform: translateX(calc(var(--conveyor-cell-width) * var(--conveyor-progress, 0)));
+  transform: translate(var(--conveyor-offset-x), var(--conveyor-offset-y));
 }
 
 .conveyor-item-entering { opacity: min(1, calc(var(--conveyor-progress, 0) * 4)); }
-.conveyor-item-exiting, .conveyor-equipment-pulse { opacity: max(0, calc(1 - var(--conveyor-progress, 0) * 2)); }
+.conveyor-item-exiting { opacity: max(0, calc(1 - var(--conveyor-progress, 0) * 1.35)); }
+.conveyor-equipment-pulse { opacity: max(0, calc(1 - var(--conveyor-progress, 0) * 2.6)); }
 
-.conveyor-equipment-label { text-anchor: middle; font-weight: 700; }
-.conveyor-equipment-name { fill: #ebeff0; font-size: 18px; }
-.conveyor-equipment-status { fill: #c4cfd3; font-size: 16px; }
+.conveyor-power-rail { fill: none; stroke: #435f73; stroke-width: 2.5; }
+.conveyor-lamp { fill: #5f778e; }
+.conveyor-lamp-blocked { fill: #ffb16d; }
+.conveyor-scene[data-running='true'] .conveyor-power-rail { stroke: #70e0ec; }
+.conveyor-scene[data-running='true'] .conveyor-lamp { fill: #8df5ff; }
 
-.conveyor-container-id, .conveyor-cell-number {
+.conveyor-diagram-label path { fill: none; stroke: #658099; stroke-width: 1.4; }
+.conveyor-diagram-label circle { fill: #9eb7c9; }
+.conveyor-equipment-name { fill: #ebf4fb; font-size: 21px; font-weight: 750; }
+.conveyor-equipment-status { fill: #bccddb; font-size: 16px; font-weight: 650; }
+
+.conveyor-container-id, .conveyor-cell-number, .conveyor-gate-count {
   text-anchor: middle;
   font: 700 15px var(--mono);
 }
 
-.conveyor-container-id { fill: #f8ce88; }
-.conveyor-cell-number { fill: #aebcc1; }
+.conveyor-container-id { fill: #f0f8ff; }
+.conveyor-cell-number { fill: #cddbeb; }
+.conveyor-gate-count { fill: #9cf3fa; }
+.conveyor-mobile-readings { display: none; }
+
+@media (max-width: 650px) {
+  .conveyor-diagram-label { display: none; }
+  .conveyor-mobile-readings {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+    padding: 11px 12px;
+    border-top: 1px solid var(--border);
+    font-size: .79rem;
+  }
+  .conveyor-mobile-readings div { display: grid; gap: 2px; }
+  .conveyor-mobile-readings span { color: var(--muted); overflow-wrap: anywhere; }
+  .conveyor-mobile-loads { grid-column: 1 / -1; }
+  .conveyor-mobile-loads span { font-family: var(--mono); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .conveyor-item-moving, .conveyor-treads { transform: none; }
