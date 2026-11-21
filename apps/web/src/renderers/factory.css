@@ -1,4 +1,4 @@
-.factory-panel { container-type: inline-size; }
+.factory-panel { container-type: inline-size; align-self: start; }
 
 .factory-panel .panel-heading { min-height: 52px; padding: 12px 18px; }
 
@@ -65,6 +65,18 @@
 
 .container-pointer { display: none; fill: var(--accent); stroke: #161e24; }
 .container-control input:checked + .container-art .container-pointer { display: block; }
+.container-control input:disabled { cursor: default; }
+.container-control.excluded .container-face { stroke-dasharray: 3 2; }
+
+.scan-trace, .scanner-signal { fill: none; stroke: #b9f4f9; stroke-width: 2; }
+.scan-trace { animation: scan-sweep 420ms ease-out both; }
+.scanner-signal { animation: scanner-light 420ms ease-out both; }
+@keyframes scan-sweep { from { opacity: 1; } to { transform: translateY(21px); opacity: .25; } }
+@keyframes scanner-light { from { opacity: 1; } to { opacity: .35; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-trace, .scanner-signal { display: none; animation: none; }
+}
 
 .container-check circle { fill: #143333; stroke: #abe0e7; }
 .container-check path { fill: none; stroke: #d0fcff; stroke-width: 1.5; }

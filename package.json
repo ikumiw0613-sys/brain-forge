@@ -10,7 +10,14 @@
     "dev:api": "uv run --directory apps/api --locked uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload",
     "build": "pnpm --filter @brain-forge/web build",
     "lint": "pnpm --filter @brain-forge/web lint",
-    "typecheck": "pnpm --filter @brain-forge/web typecheck",
+    "typecheck": "pnpm contracts:check && pnpm --filter @brain-forge/web typecheck",
+    "test:web": "pnpm --filter @brain-forge/web test",
+    "contracts:export": "uv run --directory apps/api --locked python ../../packages/contracts/export_openapi.py",
+    "contracts:generate": "openapi-typescript packages/contracts/openapi.json --immutable --default-non-nullable false -o packages/contracts/openapi.d.ts",
+    "contracts:check": "pnpm contracts:generate --check",
     "test:api": "uv run --directory apps/api --locked pytest"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0"
   }
 }

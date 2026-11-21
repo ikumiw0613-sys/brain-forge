@@ -41,7 +41,7 @@ export function Sorter({ hazardPattern }: { hazardPattern: string }) {
   )
 }
 
-export function Scanner() {
+export function Scanner({ active }: { active: boolean }) {
   return (
     <g transform="translate(467 126)" strokeLinejoin="round">
       <path d="M0 129h23l9-7H8zm84 0h23l9-7H92z" fill="#3c5059" stroke="#74939c" />
@@ -56,11 +56,12 @@ export function Scanner() {
       <path d="M12 60v53m85-53v53" stroke="#77adb9" strokeWidth="2" />
       <path d="M34 50h30v7H34z" fill="#19282e" stroke="#71929c" />
       <circle cx="49" cy="54" r="1.5" fill="#85d4df" />
+      {active && <path className="scanner-signal" d="M25 35h49" />}
     </g>
   )
 }
 
-export function ShippingGate({ hazardPattern }: { hazardPattern: string }) {
+export function ShippingGate({ hazardPattern, open }: { hazardPattern: string; open: boolean }) {
   return (
     <g transform="translate(852 137)" strokeLinejoin="round">
       <path d="M2 135h94l12-13H13Z" fill="#28363e" stroke="#74858e" />
@@ -69,7 +70,11 @@ export function ShippingGate({ hazardPattern }: { hazardPattern: string }) {
       <path d="M78 33L92 8l19 17v91l-17 18V45Z" fill="#38464b" stroke="#7b8787" />
       <path d="M5 33h73l16 12v89H5Z" fill="#414b49" stroke="#9aa39c" />
       <path d="M17 55h58v69H17z" fill="#182027" stroke="#9b9b8c" />
-      <path d="M18 59h56m-56 10h56m-56 10h56m-56 10h56m-56 10h56m-56 10h56m-56 10h56" stroke="#495960" />
+      {open ? (
+        <path d="M17 55h58v15H17zM23 75v41m46-41v41" fill="#314048" stroke="#abe0e7" />
+      ) : (
+        <path d="M18 59h56m-56 10h56m-56 10h56m-56 10h56m-56 10h56m-56 10h56m-56 10h56" stroke="#495960" />
+      )}
       <path d="M14 39h57l8 7v5H14z" fill={`url(#${hazardPattern})`} />
       <path d="M30 18h34l-3 5H27Z" fill="#c98e46" />
       <path d="M83 61v59M99 64v48" stroke="#879390" />

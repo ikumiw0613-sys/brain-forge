@@ -197,6 +197,35 @@ h1, h2, p, dl, dd { margin: 0; }
 .scan-button:focus-visible { outline: 2px solid #e6f1f4; outline-offset: 3px; }
 .scan-hint { margin-top: 8px; font-size: .8rem; }
 
+.game-feedback, .game-result {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #161e23;
+  font-size: .84rem;
+}
+
+.game-feedback [role='alert'] { color: #f1b6aa; }
+.game-result h3 { margin: 0; font-size: .98rem; }
+.game-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.game-actions button, .game-result button, .scan-skip {
+  justify-self: start;
+  padding: 5px 10px;
+  border: 1px solid #596971;
+  border-radius: 4px;
+  background: #26333a;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.game-actions button:disabled, .game-result button:disabled { opacity: .65; cursor: default; }
+.scan-skip { margin-top: 8px; font-size: .82rem; }
+
 .inspection-log { margin-top: 18px; padding: 16px 18px; }
 
 .log-empty {

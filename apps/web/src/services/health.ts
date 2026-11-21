@@ -1,8 +1,7 @@
-const baseUrl = (import.meta.env.VITE_API_BASE_URL?.trim() || 'http://localhost:8000')
-  .replace(/\/+$/, '')
+import { apiBaseUrl } from './apiBaseUrl'
 
 export async function checkApiHealth(signal: AbortSignal): Promise<void> {
-  const response = await fetch(`${baseUrl}/api/v1/health`, {
+  const response = await fetch(`${apiBaseUrl}/api/v1/health`, {
     signal, cache: 'no-store', headers: { Accept: 'application/json' },
   })
   if (!response.ok) throw new Error('Health request failed')

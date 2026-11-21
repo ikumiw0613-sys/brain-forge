@@ -2,7 +2,6 @@ import { ApiStatus } from './components/ApiStatus'
 import { SupabaseStatus } from './components/SupabaseStatus'
 import { GameLayout } from './features/game/GameLayout'
 import { st001 } from './features/stages/st001'
-import { readSt001PrototypeQuality } from './features/stages/st001PrototypeScanner'
 
 export function App() {
   return (
@@ -14,7 +13,7 @@ export function App() {
         </div>
       </header>
 
-      <GameLayout stage={st001} readQuality={readSt001PrototypeQuality} />
+      <GameLayout stage={st001} />
 
       <footer className="page-width connections" aria-labelledby="connections-title">
         <h2 id="connections-title">サービス接続状況</h2>

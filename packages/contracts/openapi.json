@@ -1,0 +1,500 @@
+{
+  "components": {
+    "schemas": {
+      "AttemptResponse": {
+        "properties": {
+          "candidate_range": {
+            "$ref": "#/components/schemas/CandidateRange"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "scans": {
+            "items": {
+              "$ref": "#/components/schemas/InspectionResult"
+            },
+            "title": "Scans",
+            "type": "array"
+          },
+          "scans_remaining": {
+            "title": "Scans Remaining",
+            "type": "integer"
+          },
+          "scans_used": {
+            "title": "Scans Used",
+            "type": "integer"
+          },
+          "stage_id": {
+            "title": "Stage Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "in_progress",
+              "cleared",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_range",
+          "scans_used",
+          "scans_remaining",
+          "status",
+          "id",
+          "stage_id",
+          "scans"
+        ],
+        "title": "AttemptResponse",
+        "type": "object"
+      },
+      "CandidateRange": {
+        "properties": {
+          "hi": {
+            "title": "Hi",
+            "type": "integer"
+          },
+          "lo": {
+            "title": "Lo",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "lo",
+          "hi"
+        ],
+        "title": "CandidateRange",
+        "type": "object"
+      },
+      "CreateAttemptRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "previous_attempt_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Attempt Id"
+          },
+          "stage_id": {
+            "title": "Stage Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stage_id"
+        ],
+        "title": "CreateAttemptRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "service": {
+            "const": "brain-forge-api",
+            "default": "brain-forge-api",
+            "title": "Service",
+            "type": "string"
+          },
+          "status": {
+            "const": "ok",
+            "default": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "InspectionResult": {
+        "properties": {
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "quality": {
+            "title": "Quality",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "index",
+          "quality"
+        ],
+        "title": "InspectionResult",
+        "type": "object"
+      },
+      "ScanRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "action_id": {
+            "format": "uuid",
+            "title": "Action Id",
+            "type": "string"
+          },
+          "expected_step": {
+            "minimum": 0.0,
+            "title": "Expected Step",
+            "type": "integer"
+          },
+          "index": {
+            "exclusiveMaximum": 16.0,
+            "minimum": 0.0,
+            "title": "Index",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "index",
+          "action_id",
+          "expected_step"
+        ],
+        "title": "ScanRequest",
+        "type": "object"
+      },
+      "ScanResponse": {
+        "properties": {
+          "candidate_range": {
+            "$ref": "#/components/schemas/CandidateRange"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "quality": {
+            "title": "Quality",
+            "type": "integer"
+          },
+          "scans_remaining": {
+            "title": "Scans Remaining",
+            "type": "integer"
+          },
+          "scans_used": {
+            "title": "Scans Used",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "in_progress",
+              "cleared",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_range",
+          "scans_used",
+          "scans_remaining",
+          "status",
+          "index",
+          "quality"
+        ],
+        "title": "ScanResponse",
+        "type": "object"
+      },
+      "StageProgress": {
+        "properties": {
+          "best_scans": {
+            "title": "Best Scans",
+            "type": "integer"
+          },
+          "clear_count": {
+            "title": "Clear Count",
+            "type": "integer"
+          },
+          "stage_id": {
+            "title": "Stage Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stage_id",
+          "best_scans",
+          "clear_count"
+        ],
+        "title": "StageProgress",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "Brain Forge API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/attempts": {
+      "post": {
+        "description": "Start ST-001. Supply the previous attempt ID to retry with a different answer.",
+        "operationId": "create_attempt_api_v1_attempts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAttemptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Create Attempt",
+        "tags": [
+          "attempts"
+        ]
+      }
+    },
+    "/api/v1/attempts/{attempt_id}": {
+      "get": {
+        "description": "Get the latest candidate range, scan budget, and completed scans.",
+        "operationId": "get_attempt_api_v1_attempts__attempt_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttemptResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Attempt",
+        "tags": [
+          "attempts"
+        ]
+      }
+    },
+    "/api/v1/attempts/{attempt_id}/scans": {
+      "post": {
+        "description": "Inspect a zero-based index. Repeat the same body to recover a lost response.",
+        "operationId": "scan_api_v1_attempts__attempt_id__scans_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attempt_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attempt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Scan",
+        "tags": [
+          "attempts"
+        ]
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "operationId": "health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/api/v1/me/progress": {
+      "get": {
+        "description": "Get the authenticated player's clear counts and best scan counts.",
+        "operationId": "get_my_progress_api_v1_me_progress_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StageProgress"
+                  },
+                  "title": "Response Get My Progress Api V1 Me Progress Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get My Progress",
+        "tags": [
+          "attempts"
+        ]
+      }
+    }
+  }
+}

@@ -7,10 +7,14 @@ const sceneHeight = 420
 const containerWidth = 43
 const containerHeight = 40
 
-export function FactoryView({ containerNumbers, selectedNumber, inspectedNumbers, onSelect }: {
+export function FactoryView({ containerNumbers, selectedNumber, inspectedNumbers, candidateRange, locked, scanning, gateOpen, onSelect }: {
   containerNumbers: readonly number[]
   selectedNumber: number | null
   inspectedNumbers: readonly number[]
+  candidateRange?: { first: number; last: number }
+  locked: boolean
+  scanning: boolean
+  gateOpen: boolean
   onSelect: (number: number) => void
 }) {
   const id = useId()
@@ -25,7 +29,7 @@ export function FactoryView({ containerNumbers, selectedNumber, inspectedNumbers
       </h2>
       <div className="factory-scroll" tabIndex={0} role="region" aria-labelledby={`${id}-heading`}>
         <div className="factory-diagram">
-          <FactoryDrawing id={id} />
+          <FactoryDrawing id={id} scanning={scanning} gateOpen={gateOpen} />
           <div role="radiogroup" aria-label="検品するコンテナ">
             {containerNumbers.map((number, index) => (
               <Container
@@ -35,6 +39,9 @@ export function FactoryView({ containerNumbers, selectedNumber, inspectedNumbers
                 groupName={`${id}-containers`}
                 selected={selectedNumber === number}
                 inspected={inspectedNumbers.includes(number)}
+                excluded={Boolean(candidateRange && (number < candidateRange.first || number > candidateRange.last))}
+                locked={locked}
+                scanning={scanning && selectedNumber === number}
                 onSelect={onSelect}
               />
             ))}
@@ -43,13 +50,16 @@ export function FactoryView({ containerNumbers, selectedNumber, inspectedNumbers
       </div>
       <div className="factory-caption">
         <p><strong>整列順</strong> 左から品質が低い順</p>
+        {candidateRange && (candidateRange.first > 1 || candidateRange.last < containerNumbers.length) && (
+          <p>破線の枠は候補外</p>
+        )}
         <p className="factory-scroll-hint">横スクロールで全体を表示</p>
       </div>
     </section>
   )
 }
 
-function FactoryDrawing({ id }: { id: string }) {
+function FactoryDrawing({ id, scanning, gateOpen }: { id: string; scanning: boolean; gateOpen: boolean }) {
   return (
     <svg
       className="factory-scene"
@@ -80,8 +90,8 @@ function FactoryDrawing({ id }: { id: string }) {
       </g>
 
       <Sorter hazardPattern={`${id}-hazard`} />
-      <Scanner />
-      <ShippingGate hazardPattern={`${id}-hazard`} />
+      <Scanner active={scanning} />
+      <ShippingGate hazardPattern={`${id}-hazard`} open={gateOpen} />
       <ConveyorBelt />
 
       <g className="equipment-label" transform="translate(108 65)">
@@ -95,7 +105,7 @@ function FactoryDrawing({ id }: { id: string }) {
         <circle cy="53" r="2.5" />
       </g>
       <g className="equipment-label" transform="translate(903 65)">
-        <text y="7">出荷ゲート</text>
+        <text y="7">{gateOpen ? '出荷ゲート（開）' : '出荷ゲート'}</text>
         <path d="M0 20v43" />
         <circle cy="63" r="2.5" />
       </g>
@@ -107,16 +117,19 @@ function FactoryDrawing({ id }: { id: string }) {
   )
 }
 
-function Container({ number, x, groupName, selected, inspected, onSelect }: {
+function Container({ number, x, groupName, selected, inspected, excluded, locked, scanning, onSelect }: {
   number: number
   x: number
   groupName: string
   selected: boolean
   inspected: boolean
+  excluded: boolean
+  locked: boolean
+  scanning: boolean
   onSelect: (number: number) => void
 }) {
   return (
-    <label className="container-control" style={{
+    <label className={excluded ? 'container-control excluded' : 'container-control'} style={{
       left: `${x / sceneWidth * 100}%`,
       top: `${211 / sceneHeight * 100}%`,
       width: `${containerWidth / sceneWidth * 100}%`,
@@ -125,7 +138,8 @@ function Container({ number, x, groupName, selected, inspected, onSelect }: {
         type="radio"
         name={groupName}
         checked={selected}
-        aria-label={`${number}番コンテナ、${inspected ? '検品済み' : '未検品'}`}
+        disabled={locked}
+        aria-label={`${number}番コンテナ、${inspected ? '検品済み' : '未検品'}${excluded ? '、候補外' : ''}`}
         onChange={() => onSelect(number)}
         onKeyDown={event => {
           if (event.key === 'Enter') {
@@ -143,6 +157,7 @@ function Container({ number, x, groupName, selected, inspected, onSelect }: {
           <rect className="container-face" x="4" y="4" width="27" height="24" rx="1" fill="#1a262d" stroke="#566971" />
           <path d="M10-5h22m6 10v15" fill="none" stroke="#8a9a9d" strokeOpacity=".7" />
           <text className="container-number" x="17.5" y="22">{number}</text>
+          {scanning && <path className="scan-trace" d="M5 5h25" />}
           <path className="container-pointer" d="M12-18h11l-5.5 7z" />
           {inspected && (
             <g className="container-check" transform="translate(35 -4)">

@@ -16,6 +16,36 @@ function configureSupabase() {
 export const supabase = configureSupabase()
 
 let pendingSession: Promise<Session> | undefined
+let pendingRefresh: { accessToken: string; promise: Promise<Session | null> } | undefined
+
+export async function getSupabaseSession(): Promise<Session | null> {
+  const client = supabase.client
+  if (!client) return null
+
+  const { data, error } = await client.auth.getSession()
+  if (error) throw error
+  return data.session
+}
+
+export async function refreshSupabaseSession(rejected: Session): Promise<Session | null> {
+  const client = supabase.client
+  const current = await getSupabaseSession()
+  if (!client || !current || current.user.id !== rejected.user.id) return null
+  if (current.access_token !== rejected.access_token) return current
+
+  const accessToken = current.access_token
+  if (pendingRefresh?.accessToken === accessToken) return pendingRefresh.promise
+
+  const promise = client.auth.refreshSession()
+    .then(({ data, error }) => {
+      if (error) throw error
+      return data.session?.user.id === rejected.user.id ? data.session : null
+    }).finally(() => {
+      if (pendingRefresh?.promise === promise) pendingRefresh = undefined
+    })
+  pendingRefresh = { accessToken, promise }
+  return promise
+}
 
 export function ensureSupabaseSession(): Promise<Session> {
   const client = supabase.client
@@ -23,9 +53,8 @@ export function ensureSupabaseSession(): Promise<Session> {
   if (pendingSession) return pendingSession
 
   const restoreOrCreateSession = async () => {
-    const current = await client.auth.getSession()
-    if (current.error) throw current.error
-    if (current.data.session) return current.data.session
+    const current = await getSupabaseSession()
+    if (current) return current
 
     const anonymous = await client.auth.signInAnonymously()
     if (anonymous.error) throw anonymous.error

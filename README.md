@@ -89,7 +89,7 @@ if (!(Test-Path apps/api/.env.local)) { Copy-Item apps/api/.env.example apps/api
 | 同上 | `SUPABASE_PUBLISHABLE_KEY` | Web と同じ公開キー。Supabase Auth にトークンの確認を依頼する際に使用 |
 | 同上 | `SUPABASE_DB_URL` | `brain_forge_api` ロール用の PostgreSQL 接続文字列 |
 
-Web は URL と公開キーがそろうと、既存のセッションを復元するか、匿名でサインインします。工場画面の下部で認証状態を確認できます。Supabase が未設定でも工場の固定サンプルとヘルスチェックを利用できます。
+Web は URL と公開キーがそろうと、既存のセッションを復元するか、匿名でサインインします。ST-001 のプレイには、匿名認証を有効にした Supabase と FastAPI の認証・DB 接続設定が必要です。工場画面の下部では、認証状態と公開ヘルスチェックを確認できます。
 
 `VITE_` の値はビルド成果物に含まれます。シークレットキーと旧 `service_role` キーはサーバー側だけで管理してください。Git には値が空の `.env.example` を含め、実際の `.env`・`.env.local` は除外します。[Vite の環境変数](https://vite.dev/guide/env-and-mode) · [Supabase の API キー](https://supabase.com/docs/guides/api/api-keys)
 
@@ -97,7 +97,7 @@ Web は URL と公開キーがそろうと、既存のセッションを復元�
 
 1. ローカル環境ではリポジトリのルートで `supabase start` を使います。同梱の設定で匿名サインインが有効になります。ホスト環境では Brain Forge 用のプロジェクトで匿名サインインを有効にし、`supabase/migrations` のマイグレーションを適用します。[匿名サインインの設定](https://supabase.com/docs/guides/auth/auth-anonymous) · [ローカル開発](https://supabase.com/docs/guides/local-development)
 2. マイグレーションが作成する `brain_forge_api` ロールに、管理者として `psql` の `\password brain_forge_api` で専用パスワードを設定します。API の接続文字列にはこのロールを使います。共有プーラーのユーザー名は `brain_forge_api.<project-ref>` です。[PostgreSQL の接続方法](https://supabase.com/docs/guides/database/connecting-to-postgres)
-3. 上記の環境変数を設定して Web と API を再起動します。挑戦・検品・進捗 API に Supabase セッションのアクセストークンを `Authorization: Bearer <token>` で送信します。`GET /api/v1/me/progress` は本人のベストスキャン数とクリア回数を返します。
+3. 上記の環境変数を設定して Web と API を再起動します。工場画面で ST-001 が始まり、同じブラウザーで再読み込みすると直前の挑戦を復元します。`GET /api/v1/me/progress` は本人のベストスキャン数とクリア回数を返します。
 
 PostgreSQL を使う統合テストは、マイグレーション適用済みのテスト DB を `BRAIN_FORGE_TEST_ADMIN_DSN` と `BRAIN_FORGE_TEST_API_DSN` で指定して `pnpm.cmd test:api` を実行します。テスト DB で後者は `brain_forge_api` ロールを使います。
 
@@ -108,7 +108,10 @@ PostgreSQL を使う統合テストは、マイグレーション適用済みの
 | `pnpm.cmd lint` | ESLint。警告も失敗として扱う |
 | `pnpm.cmd typecheck` | TypeScript の strict 型チェック |
 | `pnpm.cmd build` | 型チェックと本番用ビルド。出力は `apps/web/dist` |
+| `pnpm.cmd test:web` | ゲーム API、認証、検品の再送、ヘルスチェック、工場画面のモックテスト |
 | `pnpm.cmd test:api` | pytest。ヘルスチェック、検品ルール、認証と所有者チェック、および設定時の PostgreSQL 永続化と RLS を検証 |
+
+API クライアントと型生成の詳細は [M4-2 ゲーム API クライアント](docs/game-api-client.md) を参照してください。
 
 ## ディレクトリと設計方針
 
