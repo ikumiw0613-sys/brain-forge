@@ -16,16 +16,21 @@
   background: #0b1220;
 }
 
-.conveyor-item-moving, .conveyor-item-exiting, .conveyor-treads {
+.conveyor-item-moving, .conveyor-treads {
   transform: translate(var(--conveyor-offset-x), var(--conveyor-offset-y));
 }
 
 .conveyor-item-entering { opacity: min(1, calc(var(--conveyor-progress, 0) * 4)); }
-.conveyor-item-exiting { opacity: max(0, calc(1 - var(--conveyor-progress, 0) * 1.35)); }
+.conveyor-gate-shutter { transform: translateY(var(--conveyor-shutter-y, 0px)); }
+.conveyor-gate-load-motion {
+  transform: translate(calc(var(--conveyor-step-x) * var(--conveyor-intake-travel, 0)),
+    calc(var(--conveyor-step-y) * var(--conveyor-intake-travel, 0)));
+}
 .conveyor-equipment-pulse { opacity: max(0, calc(1 - var(--conveyor-progress, 0) * 2.6)); }
 
 .conveyor-power-rail { fill: none; stroke: #435f73; stroke-width: 2.5; }
 .conveyor-lamp { fill: #5f778e; }
+.conveyor-gate-lamp-complete { fill: #b6f8ff; }
 .conveyor-lamp-blocked { fill: #ffb16d; }
 .conveyor-scene[data-running='true'] .conveyor-power-rail { stroke: #70e0ec; }
 .conveyor-scene[data-running='true'] .conveyor-lamp { fill: #8df5ff; }
@@ -62,7 +67,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .conveyor-item-moving, .conveyor-treads { transform: none; }
+  .conveyor-item-moving, .conveyor-treads, .conveyor-gate-shutter, .conveyor-gate-load-motion { transform: none; }
   .conveyor-item-entering { opacity: 1; }
-  .conveyor-item-exiting, .conveyor-equipment-pulse { display: none; }
+  .conveyor-equipment-pulse { display: none; }
 }

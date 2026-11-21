@@ -3,6 +3,7 @@ import { act, StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { ConveyorView } from '../../renderers/ConveyorView'
 import { ConveyorPrototype } from './ConveyorPrototype'
 
 let container: HTMLDivElement
@@ -54,6 +55,10 @@ const progress = () => Number(scene().style.getPropertyValue('--conveyor-progres
 const cellWidth = () => Number.parseFloat(scene().style.getPropertyValue('--conveyor-step-x'))
 const cellRise = () => Number.parseFloat(scene().style.getPropertyValue('--conveyor-step-y'))
 const beltOffset = () => progress() * cellWidth()
+const shutterLift = () => Math.abs(Number.parseFloat(scene().style.getPropertyValue('--conveyor-shutter-y')))
+const intakeTravel = () => Number(scene().style.getPropertyValue('--conveyor-intake-travel'))
+const gateLoad = () => scene().querySelector('.conveyor-gate-load')
+const gateCount = () => scene().querySelector('.conveyor-gate-count')?.textContent
 
 function reading(label: string) {
   const term = Array.from(container.querySelectorAll('dt')).find(element => element.textContent?.startsWith(label))
@@ -66,18 +71,34 @@ function svgAnchor(element: Element | null | undefined) {
   return { x: Number(anchor[1]), y: Number(anchor[2]) }
 }
 
+function polygonXs(polygon: Element) {
+  return polygon.getAttribute('points')!.split(' ').map(point => Number(point.split(',')[0]))
+}
+
 function containerPosition(id: string) {
   const label = Array.from(scene().querySelectorAll('.conveyor-container-id')).find(element => element.textContent === id)
   const item = label?.closest('.conveyor-container')
   const anchor = svgAnchor(item)
   // JSDOM does not resolve the SVG transform from CSS custom properties.
-  const phase = item?.querySelector('.conveyor-item-moving') || item?.closest('.conveyor-item-exiting') ? progress() : 0
+  const phase = item?.closest('.conveyor-gate-load-motion') ? intakeTravel()
+    : item?.querySelector('.conveyor-item-moving') ? progress() : 0
   return { x: anchor.x + phase * cellWidth(), y: anchor.y + phase * cellRise() }
 }
 
 const containerX = (id: string) => containerPosition(id).x
 
 describe('conveyor prototype controls', () => {
+  it('keeps the shutter and its upward travel clear of the foreground housing', () => {
+    const shutter = scene().querySelector('.conveyor-gate-shutter')!
+    const door = shutter.querySelector('polygon')!
+    const hoodFaces = Array.from(scene().querySelectorAll('.conveyor-gate-foreground polygon'))
+    const hoodLeft = Math.min(...hoodFaces.flatMap(polygonXs))
+    expect(hoodLeft - Math.max(...polygonXs(door))).toBeGreaterThan(4)
+    expect(shutter.closest('[clip-path]')).toBeNull()
+    expect(Array.from(scene().querySelectorAll('.conveyor-gate-interior polygon'))
+      .some(polygon => polygon.getAttribute('points') === door.getAttribute('points'))).toBe(true)
+  })
+
   it('fits all eight projected cell markers inside the view and spaces them along the motion vector', () => {
     const [left, top, width, height] = scene().getAttribute('viewBox')!.split(' ').map(Number)
     const markers = Array.from(scene().querySelectorAll('.conveyor-cell-number'), text => svgAnchor(text.parentElement))
@@ -185,7 +206,7 @@ describe('conveyor prototype controls', () => {
     expect(containerX('C-01') - initial.x - cellWidth()).toBeCloseTo(beltOffset())
   })
 
-  it('runs production and shipping effects at the committed tick boundaries', async () => {
+  it('opens, intakes and closes in the tick before the shipment commits', async () => {
     await clickButton('開始')
     await advance(999)
     expect(scene().querySelector('.conveyor-item-entering')).toBeNull()
@@ -193,28 +214,114 @@ describe('conveyor prototype controls', () => {
     expect(scene().querySelector('.conveyor-item-entering')?.textContent).toBe('C-01')
     expect(scene().querySelector('.conveyor-equipment-pulse')).not.toBeNull()
 
-    await advance(3500)
+    await advance(3256)
+    expect(tick()).toBe('8')
+    expect(shutterLift()).toBe(0)
+    expect(gateLoad()).toBeNull()
+    await advance(244)
     expect(tick()).toBe('9')
-    const endX = containerX('C-03')
     const exit = containerPosition('C-01')
-    await advance(499)
+    const load = gateLoad()!
+    expect(load.textContent).toBe('C-01')
+    expect(load.getAttribute('aria-hidden')).toBe('true')
+    expect(shutterLift()).toBe(0)
+
+    const clip = scene().querySelector('clipPath[id$="-intake-clip"]')!
+    const clipRect = clip.querySelector('rect')!
+    const clipEdge = Number(clipRect.getAttribute('x')) + Number(clipRect.getAttribute('width'))
+    const crateShadow = load.querySelector('.conveyor-container polygon')!
+    const crateXs = polygonXs(crateShadow)
+    expect(load.getAttribute('clip-path')).toBe(`url(#${clip.id})`)
+    expect(load.compareDocumentPosition(scene().querySelector('.conveyor-gate-interior')!) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
+    expect(load.compareDocumentPosition(scene().querySelector('.conveyor-gate-foreground')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(exit.x + Math.max(...crateXs)).toBeLessThan(clipEdge)
+
+    await advance(60)
+    expect(shutterLift()).toBeGreaterThan(0)
     expect(containerPosition('C-01')).toEqual(exit)
-    expect(containerX('C-03')).toBeGreaterThan(endX)
-    expect(scene().querySelector('.conveyor-item-exiting')).toBeNull()
+    expect(gateCount()).toBe('0')
+    await advance(196)
+    const open = shutterLift()
+    const inside = containerPosition('C-01')
+    expect(inside.x - exit.x).toBeCloseTo(intakeTravel() * cellWidth())
+    expect(inside.y - exit.y).toBeCloseTo(intakeTravel() * cellRise())
+    expect(inside.x).toBeGreaterThan(exit.x)
+    expect(positions()).toContain('C-01 は 8 マス目')
+    expect(reading('出荷数')).toBe('0 個')
+
+    await advance(176)
+    expect(shutterLift()).toBeGreaterThan(0)
+    expect(shutterLift()).toBeLessThan(open)
+    expect(containerX('C-01') + Math.min(...crateXs)).toBeGreaterThan(clipEdge)
+    await advance(67)
+    expect(gateCount()).toBe('0')
     await advance(1)
     expect(tick()).toBe('10')
-    expect(containerPosition('C-01')).toEqual(exit)
+    expect(gateLoad()).toBeNull()
+    expect(shutterLift()).toBe(0)
     expect(positions()).not.toContain('C-01 は 8 マス目')
     expect(positions()).toContain('C-01 を回収')
-    expect(scene().querySelector('.conveyor-item-exiting')?.getAttribute('aria-hidden')).toBe('true')
+    expect(scene().querySelector('.conveyor-gate-lamp-complete')).not.toBeNull()
     expect(scene().querySelector('.conveyor-item-entering')?.textContent).toBe('C-05')
     expect(reading('出荷数')).toBe('1 個')
-    expect(scene().querySelector('.conveyor-gate-count')?.textContent).toBe('1')
+    expect(gateCount()).toBe('1')
     expect(container.querySelector('.conveyor-mobile-loads')?.textContent).not.toContain('C-01')
     expect(reading('コンベア上のコンテナ')).toBe('4 個')
     expect(reading('出荷ペース')).toBe('0.10 個 / Tick')
     await advance(500)
-    expect(scene().querySelector('.conveyor-item-exiting')).toBeNull()
+    expect(gateLoad()?.textContent).toBe('C-02')
+    expect(gateCount()).toBe('1')
+  })
+
+  it('keeps a single visual load when a shipment completes and the next intake is already planned', async () => {
+    await act(async () => {
+      root?.render(<ConveyorView items={[{ id: 'C-02', position: 7 }]} nextItems={[]} minerStatus="waiting"
+        shippedId="C-01" shippedCount={1} running={false} progressAt={() => 0.5} />)
+    })
+    expect(Array.from(scene().querySelectorAll('.conveyor-container-id'), label => label.textContent)).toEqual(['C-02'])
+    expect(gateLoad()?.textContent).toBe('C-02')
+    expect(shutterLift()).toBeGreaterThan(0)
+    expect(gateCount()).toBe('1')
+  })
+
+  it('preserves gate progress through pause, resume and 2x speed, and clears an in-flight intake on reset', async () => {
+    await clickButton('開始')
+    await advance(4560)
+    await clickButton('一時停止')
+    const opening = shutterLift()
+    const entrance = containerPosition('C-01')
+    expect(opening).toBeGreaterThan(0)
+    await advance(1008)
+    expect(shutterLift()).toBe(opening)
+    expect(containerPosition('C-01')).toEqual(entrance)
+    expect(tick()).toBe('9')
+
+    await clickButton('再開')
+    expect(shutterLift()).toBe(opening)
+    expect(containerPosition('C-01')).toEqual(entrance)
+    await advance(208)
+    expect(shutterLift()).toBeGreaterThan(opening)
+    const open = shutterLift()
+    const inside = containerPosition('C-01')
+    expect(inside.x).toBeGreaterThan(entrance.x)
+    await selectSpeed('2倍')
+    expect(shutterLift()).toBe(open)
+    expect(containerPosition('C-01')).toEqual(inside)
+    await advance(64)
+    expect(containerX('C-01')).toBeGreaterThan(inside.x)
+    expect(gateCount()).toBe('0')
+    await advance(52)
+    expect(tick()).toBe('10')
+    expect(gateCount()).toBe('1')
+
+    await advance(298)
+    expect(gateLoad()?.textContent).toBe('C-02')
+    expect(shutterLift()).toBeGreaterThan(0)
+    await clickButton('リセット')
+    expect(gateLoad()).toBeNull()
+    expect(shutterLift()).toBe(0)
+    expect(gateCount()).toBe('0')
+    expect(tick()).toBe('0')
   })
 
   it('keeps the simulation clock and the last 20 ticks of shipments accurate during continuous operation', async () => {
@@ -224,6 +331,8 @@ describe('conveyor prototype controls', () => {
     expect(progress()).toBe(0)
     expect(reading('生産数')).toBe('120 個')
     expect(reading('出荷数')).toBe('116 個')
+    expect(gateCount()).toBe('116')
+    expect(gateLoad()).toBeNull()
     expect(reading('コンベア上のコンテナ')).toBe('4 個')
     expect(reading('出荷ペース')).toBe('0.50 個 / Tick')
     expect(container.querySelector('.mission-readings')?.textContent).toContain('直近 20 Tick')
@@ -267,7 +376,7 @@ describe('conveyor prototype controls', () => {
     expect(progress()).toBe(0)
     expect(container.querySelector('.conveyor-speed p')?.textContent).toBe('1 Tick = 500 ms')
     expect(positions()).toContain('コンベア上にコンテナはありません')
-    expect(scene().querySelector('.conveyor-item-exiting')).toBeNull()
+    expect(gateLoad()).toBeNull()
     expect(reading('生産数')).toBe('0 個')
     expect(reading('出荷数')).toBe('0 個')
     expect(reading('コンベア上のコンテナ')).toBe('0 個')

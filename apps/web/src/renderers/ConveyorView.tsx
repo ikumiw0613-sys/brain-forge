@@ -3,8 +3,9 @@ import type { CSSProperties } from 'react'
 import { conveyorLength } from '../features/game/conveyor'
 import type { ConveyorItem } from '../features/game/conveyor'
 import type { MinerStatus } from '../features/game/factory'
-import { BeltLine, DispatchBay, DispatchHousing, FactoryFloor, OreContainer, OreMiner } from './ConveyorSceneArt'
+import { BeltLine, DispatchBay, DispatchHousing, DispatchShutter, FactoryFloor, OreContainer, OreMiner } from './ConveyorSceneArt'
 import { conveyorSceneBounds, conveyorStep } from './conveyorProjection'
+import { getDispatchFrame } from './dispatchMotion'
 import './conveyor.css'
 
 const minerReadings: Record<MinerStatus, string> = {
@@ -26,20 +27,26 @@ export function ConveyorView({ items, nextItems, minerStatus, shippedId, shipped
 }) {
   const id = useId()
   const scene = useRef<SVGSVGElement>(null)
-  const shipping = shippedId !== undefined
+  const shipped = shippedId !== undefined
+  const intake = items.find(item => item.position === conveyorLength - 1 && !nextItems.some(next => next.id === item.id))
+  const takingIn = intake !== undefined
   const minerReading = minerReadings[minerStatus]
-  const shipmentReading = shipping ? `${shippedId} を回収` : '回収待ち'
+  const shipmentReading = shipped ? `${shippedId} を回収` : takingIn ? `${intake.id} 搬入中` : '回収待ち'
 
   useLayoutEffect(() => {
     const svg = scene.current!
     let frame: number | undefined
     const animate = (now: number) => {
-      svg.style.setProperty('--conveyor-progress', String(progressAt(now)))
+      const progress = progressAt(now)
+      svg.style.setProperty('--conveyor-progress', String(progress))
+      const { shutterLift, intakeTravel } = getDispatchFrame(takingIn ? progress : 0)
+      svg.style.setProperty('--conveyor-shutter-y', `${-shutterLift}px`)
+      svg.style.setProperty('--conveyor-intake-travel', String(intakeTravel))
       if (running) frame = window.requestAnimationFrame(animate)
     }
     animate(performance.now())
     return () => { if (frame !== undefined) window.cancelAnimationFrame(frame) }
-  }, [progressAt, running])
+  }, [progressAt, running, takingIn])
 
   return (
     <section className="panel conveyor-board" aria-labelledby={`${id}-heading`}>
@@ -69,9 +76,10 @@ export function ConveyorView({ items, nextItems, minerStatus, shippedId, shipped
         <FactoryFloor id={id} />
         <BeltLine id={id} />
         <OreMiner producing={minerStatus === 'supplied'} blocked={minerStatus === 'blocked'} />
-        <DispatchBay shipping={shipping} />
+        <DispatchBay shipped={shipped} />
 
         {items.map(item => {
+          if (item === intake) return null
           const next = nextItems.find(({ id }) => id === item.id)
           return (
             <OreContainer
@@ -83,12 +91,15 @@ export function ConveyorView({ items, nextItems, minerStatus, shippedId, shipped
             />
           )
         })}
-        {shipping && (
-          <g className="conveyor-item-exiting" aria-hidden="true">
-            <OreContainer id={shippedId} cell={conveyorLength - 1} />
+        {takingIn && (
+          <g className="conveyor-gate-load" clipPath={`url(#${id}-intake-clip)`} aria-hidden="true">
+            <g className="conveyor-gate-load-motion">
+              <OreContainer id={intake.id} cell={intake.position} />
+            </g>
           </g>
         )}
-        <DispatchHousing shippedCount={shippedCount} shipping={shipping} />
+        <DispatchShutter id={id} />
+        <DispatchHousing shippedCount={shippedCount} shipped={shipped} />
 
         <g className="conveyor-diagram-label" transform="translate(-252 -181)" aria-hidden="true">
           <path d="M0 43h35l34 28" />

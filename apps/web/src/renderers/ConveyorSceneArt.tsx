@@ -1,5 +1,6 @@
 import { conveyorLength } from '../features/game/conveyor'
-import { conveyorFaceAngle, conveyorSceneBounds, floorTransform, projectedPoints as points, projectedTranslate as translate } from './conveyorProjection'
+import { conveyorFaceAngle, conveyorSceneBounds, floorTransform, projectFactory, projectedPoints as points, projectedTranslate as translate } from './conveyorProjection'
+import { shutterHeight } from './dispatchMotion'
 
 const cells = Array.from({ length: conveyorLength }, (_, index) => index)
 const beltHeight = 48
@@ -164,41 +165,83 @@ export function OreMiner({ producing, blocked }: { producing: boolean; blocked: 
 }
 
 const gateStart = conveyorLength
+const gateMouth = gateStart + .1
+const openingBack = -.53
+const openingFront = .52
+const shutterBase = beltHeight + 1
+const shutterTop = shutterBase + shutterHeight
+const guideTop = shutterTop + shutterHeight + 3
+const gateOpening = points([gateMouth, openingBack, shutterTop], [gateMouth, openingFront, shutterTop],
+  [gateMouth, openingFront, shutterBase], [gateMouth, openingBack, shutterBase])
 
-export function DispatchBay({ shipping }: { shipping: boolean }) {
+export function DispatchBay({ shipped }: { shipped: boolean }) {
   return (
-    <g aria-hidden="true">
+    <g className="conveyor-gate-interior" aria-hidden="true">
       <Block at={[gateStart - .02, -.79, 7]} size={[1.57, 1.58, 20]} tones={paint.frame} />
       <Block at={[gateStart - .01, -.55, 27]} size={[1.39, 1.1, beltHeight - 27]} tones={paint.foundation} stroke="#617b90" />
       <Block at={[gateStart + .16, -.77, 27]} size={[.86, .24, 80]} tones={paint.housing} />
       <Block at={[gateStart + 1.16, -.54, beltHeight]} size={[.22, 1.08, 61]} tones={paint.foundation} stroke="#49647b" />
       <polygon points={points([gateStart + .025, -.47, beltHeight + 1], [gateStart + 1.09, -.47, beltHeight + 1],
         [gateStart + 1.09, .47, beltHeight + 1], [gateStart + .025, .47, beltHeight + 1])}
-        fill="#101b2a" stroke="#536b84" />
+        fill="#080f1c" stroke="#536b84" />
       {[.22, .47, .72, .97].map(offset => (
         <polyline key={offset} points={points([gateStart + offset, -.46, beltHeight + 1], [gateStart + offset, .46, beltHeight + 1])}
           stroke="#52687e" strokeWidth="1.2" />
       ))}
-      {shipping && <polyline className="conveyor-equipment-pulse" points={points([gateStart + .12, -.43, beltHeight + 1],
+      <polygon points={gateOpening} fill="#091321" stroke="#3d546b" />
+      {shipped && <polyline className="conveyor-equipment-pulse" points={points([gateStart + .12, -.43, beltHeight + 1],
         [gateStart + 1.1, -.43, beltHeight + 1], [gateStart + 1.1, .43, beltHeight + 1])} fill="none" stroke="#8df5ff" strokeWidth="3" />}
     </g>
   )
 }
 
-export function DispatchHousing({ shippedCount, shipping }: { shippedCount: number; shipping: boolean }) {
+export function DispatchShutter({ id }: { id: string }) {
+  const { x: left, y: top, height } = conveyorSceneBounds
+  const { x: intakeLimit } = projectFactory([gateStart + .57, 0])
+
   return (
     <g aria-hidden="true">
-      <Block at={[gateStart + .16, .52, 27]} size={[.86, .26, 80]} tones={paint.housing} />
-      <Block at={[gateStart + .1, -.79, 107]} size={[1.04, 1.59, 17]} tones={paint.steel} />
-      <Block at={[gateStart + .36, -.55, 124]} size={[.49, .76, 7]} tones={paint.housing} />
-      <polyline points={points([gateStart + .102, -.55, 109], [gateStart + .102, .52, 109], [gateStart + .102, .52, 49])}
+      <defs>
+        <clipPath id={`${id}-intake-clip`}>
+          <rect x={left} y={top} width={intakeLimit - left} height={height} />
+        </clipPath>
+      </defs>
+      <g className="conveyor-gate-shutter">
+        <polygon points={gateOpening} fill="#617a92" stroke="#9fb6ca" />
+        {[8, 18, 28, 38, 48].map(offset => (
+          <polyline key={offset} points={points([gateMouth, openingBack, shutterBase + offset], [gateMouth, openingFront, shutterBase + offset])}
+            fill="none" stroke="#263d54" strokeWidth="2.2" />
+        ))}
+        <polyline points={points([gateMouth, openingBack, shutterBase + 3], [gateMouth, openingFront, shutterBase + 3])}
+          fill="none" stroke="#ffb16d" strokeWidth="3" />
+      </g>
+      <Block at={[gateMouth - .04, openingBack - .1, shutterBase - 4]} size={[.12, .1, guideTop - shutterBase + 4]} tones={paint.frame} />
+      <Block at={[gateMouth - .04, openingFront, shutterBase - 4]} size={[.12, .11, guideTop - shutterBase + 4]} tones={paint.frame} />
+      <Block at={[gateMouth - .045, openingBack - .1, guideTop]} size={[.13, openingFront - openingBack + .21, 8]} />
+    </g>
+  )
+}
+
+export function DispatchHousing({ shippedCount, shipped }: { shippedCount: number; shipped: boolean }) {
+  // The fixed camera sees the near wall, so the hood starts beyond the projected shutter.
+  const hoodStart = gateStart + .91
+  const hoodWidth = .63
+  return (
+    <g className="conveyor-gate-foreground" aria-hidden="true">
+      <Block at={[hoodStart, .49, 27]} size={[hoodWidth, .31, 80]} tones={paint.housing} />
+      <polygon points={points([hoodStart + .04, .801, 61], [hoodStart + .59, .801, 61],
+        [hoodStart + .59, .801, 37], [hoodStart + .04, .801, 37])}
+        fill="#203449" stroke="#536f84" />
+      <Block at={[hoodStart, -.79, shutterTop]} size={[hoodWidth, 1.59, 17]} tones={paint.steel} />
+      <Block at={[hoodStart + .12, -.55, 124]} size={[.34, .76, 7]} tones={paint.housing} />
+      <polyline points={points([hoodStart, -.55, 109], [hoodStart, .52, 109], [hoodStart, .52, 49])}
         fill="none" stroke="#e4a25c" strokeWidth="2.5" strokeDasharray="5 6" />
-      <g transform={`${translate([gateStart + .57, .792, 80])} rotate(${conveyorFaceAngle})`}>
-        <rect x="-30" y="-11" width="60" height="23" rx="3" fill="#122339" stroke="#7898af" />
-        <circle className="conveyor-lamp" cx="-22" r="3" />
-        <text className="conveyor-gate-count" x="5" y="5" textLength={String(shippedCount).length > 4 ? 34 : undefined}
+      <g transform={`${translate([hoodStart + hoodWidth / 2, .8, 80])} rotate(${conveyorFaceAngle})`}>
+        <rect x="-25" y="-11" width="50" height="23" rx="3" fill="#122339" stroke="#7898af" />
+        <circle className={shipped ? 'conveyor-gate-lamp-complete' : 'conveyor-lamp'} cx="-17" r="3" />
+        <text className="conveyor-gate-count" x="6" y="5" textLength={String(shippedCount).length > 3 ? 29 : undefined}
           lengthAdjust="spacingAndGlyphs">{shippedCount}</text>
-        {shipping && <circle className="conveyor-equipment-pulse" cx="-22" r="7" fill="#8df5ff" />}
+        {shipped && <circle className="conveyor-equipment-pulse" cx="-17" r="6" fill="#8df5ff" />}
       </g>
     </g>
   )
