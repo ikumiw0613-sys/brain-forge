@@ -25,6 +25,7 @@ export default defineConfig({
         resolve(import.meta.dirname, 'index.html'),
         resolve(import.meta.dirname, 'prototypes/conveyor/index.html'),
         resolve(import.meta.dirname, 'prototypes/weight-search/index.html'),
+        resolve(import.meta.dirname, 'prototypes/manufacturing/index.html'),
       ],
     },
   },

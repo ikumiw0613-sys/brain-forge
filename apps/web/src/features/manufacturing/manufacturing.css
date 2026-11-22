@@ -1,0 +1,105 @@
+:root { color-scheme: dark; font-family: "Segoe UI", "Yu Gothic UI", Meiryo, sans-serif; background: #0b111a; color: #eef4f8; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; }
+button, select { font: inherit; }
+button:focus-visible, select:focus-visible { outline: 2px solid #aaf6ef; outline-offset: 3px; }
+.manufacturing { min-height: 100vh; background: radial-gradient(ellipse at 60% 0, #1b3046, transparent 720px), #0b111a; }
+.manufacturing-header { border-bottom: 1px solid #2a3d50; background: #0c1622; }
+.manufacturing-header > div { width: min(1280px, calc(100% - 48px)); min-height: 66px; margin: auto; display: flex; align-items: center; gap: 10px; color: #ffc18c; font-size: 1.3rem; }
+.manufacturing-header strong { color: #edf5fa; font-size: 1.1rem; }
+.manufacturing-header span { margin-left: auto; color: #a5b8c7; font: 700 .72rem Consolas, monospace; text-transform: uppercase; letter-spacing: .08em; }
+.manufacturing-main { width: min(1280px, calc(100% - 48px)); margin: auto; padding: 28px 0 50px; display: grid; gap: 20px; }
+.manufacturing-workspace { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+.manufacturing-main { container-type: inline-size; }
+.manufacturing-title { display: flex; align-items: end; justify-content: space-between; gap: 20px; }
+.manufacturing-title p { margin: 0 0 5px; color: #90c8ce; font-size: .8rem; }
+.manufacturing-title h1 { margin: 0; font-size: clamp(1.6rem, 3vw, 2.3rem); }
+.manufacturing-title > span { color: #a9bac7; font-size: .85rem; }
+.manufacturing-title > span[data-running="true"] { color: #91e9d5; }
+.manufacturing-layout { display: grid; grid-template-columns: minmax(0, 2fr) minmax(260px, .8fr); gap: 16px; align-items: start; }
+.manufacturing-panel { overflow: hidden; border: 1px solid #2f4355; border-radius: 12px; background: #121f2d; }
+.manufacturing-panel-heading { min-height: 55px; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 18px; border-bottom: 1px solid #2f4355; }
+.manufacturing-panel-heading h2 { margin: 0; font-size: .98rem; }
+.manufacturing-panel-heading span { color: #a3b7c8; font-size: .75rem; text-align: right; }
+.manufacturing-scene { display: block; width: 100%; }
+.manufacturing-label text { fill: #eef7fa; font: 700 18px "Segoe UI", sans-serif; }
+.manufacturing-label text + text { fill: #a8c5d4; font-size: 15px; }
+.manufacturing-lamp { fill: #6e8290; }
+.manufacturing-machine[data-processing="true"] .manufacturing-lamp { fill: #9ffff2; filter: drop-shadow(0 0 8px #54e5d9); }
+.manufacturing-machine[data-processing="true"] .manufacturing-lamp { animation: manufacturing-pulse .75s ease-in-out infinite alternate; }
+@keyframes manufacturing-pulse { from { opacity: .55; } to { opacity: 1; } }
+.manufacturing-progress { display: flex; align-items: center; gap: 12px; padding: 15px 18px; border-top: 1px solid #2f4355; font-size: .82rem; }
+.manufacturing-progress progress { flex: 1; min-width: 40px; accent-color: #80d9c8; }
+.manufacturing-progress strong { color: #a5dcd8; white-space: nowrap; }
+.manufacturing-controls { padding-bottom: 18px; }
+.manufacturing-controls label { display: grid; gap: 8px; padding: 18px 18px 0; color: #c2d1dc; font-size: .85rem; }
+.manufacturing-controls select { width: 100%; padding: 10px; border: 1px solid #526c80; border-radius: 6px; background: #0d1b29; color: #edf5fb; }
+.manufacturing-controls p { margin: 8px 18px 0; color: #a5b8c7; font-size: .75rem; line-height: 1.6; }
+.manufacturing-buttons { display: flex; gap: 8px; padding: 22px 18px 0; }
+.manufacturing-buttons button { min-height: 42px; padding: 8px 16px; border: 1px solid #5a7184; border-radius: 6px; background: #1a2a3b; color: #f0f6fb; cursor: pointer; }
+.manufacturing-buttons .manufacturing-primary { flex: 1; background: #f8bc88; border-color: #f8bc88; color: #21160e; font-weight: 700; }
+.manufacturing-stats dl { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); margin: 0; }
+.manufacturing-stats dl > div { min-width: 0; padding: 17px 18px; }
+.manufacturing-stats dl > div + div { border-left: 1px solid #2f4355; }
+.manufacturing-stats dt { color: #a5b8c7; font-size: .76rem; }
+.manufacturing-stats dd { margin: 9px 0 0; font: 700 clamp(1.25rem, 2vw, 1.8rem) Consolas, monospace; overflow-wrap: anywhere; }
+.manufacturing-stats dd small { color: #a5b8c7; font: 600 .75rem "Segoe UI", sans-serif; white-space: nowrap; }
+.manufacturing-python, .manufacturing-code-panel {
+  --border: #2f4355;
+  --muted: #a5b8c7;
+  --teal: #91e9d5;
+  --accent: #ffc18c;
+  --mono: "Cascadia Mono", Consolas, monospace;
+}
+.manufacturing-code-panel {
+  position: sticky;
+  top: 0;
+  max-height: 100dvh;
+  overflow: auto;
+  min-width: 0;
+  background: #121f2d;
+  border-left: 1px solid #526c80;
+  z-index: 1;
+}
+.manufacturing-code-panel[hidden] { display: none; }
+.manufacturing-code-panel .weight-python { padding-left: 24px; }
+.manufacturing-code-panel .weight-code-editor { height: clamp(220px, 52dvh, 620px); resize: none; }
+.manufacturing-code-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px 12px 24px; font-size: .85rem; }
+.manufacturing-code-toolbar p { margin: 0; color: var(--muted); }
+.manufacturing-code-toolbar button, .manufacturing-code-entry button { padding: 8px 12px; color: #eef4f8; background: #1a2a3b; border: 1px solid #526c80; border-radius: 6px; white-space: nowrap; cursor: pointer; }
+.manufacturing-code-toolbar button:disabled { opacity: .55; cursor: default; }
+.manufacturing-code-entry { padding: 14px 18px 0; }
+.manufacturing-code-entry p { margin: 8px 0 0; }
+.manufacturing-code-entry .manufacturing-python-error { color: #ffc0b2; }
+.manufacturing-code-resize { position: absolute; inset: 0 auto 0 0; width: 12px; cursor: ew-resize; touch-action: none; z-index: 2; }
+.manufacturing-code-resize:hover, .manufacturing-code-resize:focus-visible { background: #91e9d530; outline: 1px solid #91e9d5; outline-offset: -1px; }
+.manufacturing-shelf-legend { margin: 12px 18px 0; color: var(--muted); font-size: .78rem; }
+.manufacturing-readings { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 14px; margin: 0; padding: 18px; }
+.manufacturing-readings dt { color: var(--muted); font-size: .8rem; }
+.manufacturing-readings dd { margin: 5px 0 0; font-weight: 700; }
+.manufacturing-buttons button:disabled { opacity: .6; cursor: default; }
+@container (max-width: 720px) {
+  .manufacturing-layout { grid-template-columns: minmax(0, 1fr); }
+  .manufacturing-stats dl { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .manufacturing-stats dl > div:nth-child(4) { border-left: 0; }
+  .manufacturing-stats dl > div:nth-child(n+4) { border-top: 1px solid #2f4355; }
+}
+@media (max-width: 850px) {
+  .manufacturing-code-panel { position: fixed; inset: 0 0 0 auto; min-width: min(92vw, 560px); box-shadow: -12px 0 32px #0008; }
+  .manufacturing-code-resize { display: none; }
+  .manufacturing-layout { grid-template-columns: 1fr; }
+  .manufacturing-stats dl { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .manufacturing-stats dl > div:nth-child(4) { border-left: 0; }
+  .manufacturing-stats dl > div:nth-child(n+4) { border-top: 1px solid #2f4355; }
+}
+@media (max-width: 520px) {
+  .manufacturing-header > div, .manufacturing-main { width: calc(100% - 24px); }
+  .manufacturing-header span { font-size: .6rem; text-align: right; }
+  .manufacturing-stats dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .manufacturing-stats dl > div:nth-child(odd) { border-left: 0; }
+  .manufacturing-stats dl > div:nth-child(even) { border-left: 1px solid #2f4355; }
+  .manufacturing-stats dl > div:nth-child(n+3) { border-top: 1px solid #2f4355; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .manufacturing-machine[data-processing="true"] .manufacturing-lamp { animation: none; }
+}

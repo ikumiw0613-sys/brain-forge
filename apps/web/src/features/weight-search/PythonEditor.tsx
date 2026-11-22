@@ -33,11 +33,11 @@ export function PythonEditor({ code, report, n, target, canRun, busy, onChange, 
   report: PythonReport
   n: number
   target: number
-  canRun: boolean
+  canRun?: boolean
   busy: boolean
   onChange: (code: string) => void
-  onRun: () => void
-  onStop: () => void
+  onRun?: () => void
+  onStop?: () => void
 }) {
   const parent = useRef<HTMLDivElement>(null)
   const editor = useRef<EditorView | null>(null)
@@ -94,10 +94,10 @@ export function PythonEditor({ code, report, n, target, canRun, busy, onChange, 
       </div>
       <p id="weight-python-inputs"><code>n = {n}</code><code>target = {target}</code><span>計量の index は 0 始まり</span></p>
       <div ref={parent} className="weight-code-editor" />
-      <div className="weight-python-actions">
+      {onRun && onStop && <div className="weight-python-actions">
         <button type="button" className="weight-primary" disabled={!canRun || !code.trim()} onClick={onRun}>実行</button>
         <button type="button" className="weight-secondary" disabled={!busy} onClick={onStop}>停止</button>
-      </div>
+      </div>}
       {report.status === 'failed' && <pre className="weight-python-error" role="alert">{report.message}</pre>}
       {report.status === 'finished' && (
         <div className="weight-python-result" aria-live="polite">

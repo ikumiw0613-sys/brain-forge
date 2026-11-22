@@ -93,6 +93,10 @@ function beginOrder(weights: readonly number[], sample: number, previous?: Order
   }
 }
 
+export function advanceWeightSearchOrder(state: State, sample: number): State {
+  return { ...state, ...beginOrder(state.weights, sample, state.order) }
+}
+
 export function createWeightSearch(weights: readonly number[], sample: number): State {
   const warehouse = createWarehouse(weights)
   return { weights: warehouse, ...beginOrder(warehouse, sample), history: [], totalPower: 0 }
@@ -192,7 +196,7 @@ export function weightSearchReducer(state: State, action: WeightSearchAction): S
     }
     case 'nextOrder':
       if (!currentCompletion(state)) return state
-      return { ...state, ...beginOrder(weights, action.sample, order) }
+      return advanceWeightSearchOrder(state, action.sample)
   }
 }
 
