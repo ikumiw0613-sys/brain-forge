@@ -116,10 +116,14 @@ export function WeightSearchGantry({ slots, parked, motion, latest, shipped, shi
       role="img" aria-label="保管棚、天井走行式計量ロボット、出荷ゲート" aria-describedby="shelf-legend"
       data-target-index={motion?.index} data-parked-index={parked}>
       <FactoryFloor id={id} />
-      <g className="weight-rack-floor" data-floor="1" data-active={Boolean(motion)} transform="translate(-115 -180)">
+      <g className="weight-rack-floor" data-floor="1" data-active={Boolean(motion)}
+        data-candidate={slots.some(slot => slot.candidate)} data-measuring={motion?.kind === 'weigh' && motion.retractAt === undefined}
+        transform="translate(-115 -180)">
         <rect className="weight-floor-plaque" width="110" height="60" rx="6" />
         <text x="14" y="27" className="weight-floor-title">1F</text>
         <text x="14" y="47" className="weight-floor-label">0–15</text>
+        {!slots.some(slot => slot.candidate) && <text x="55" y="27" className="weight-floor-status">除外済</text>}
+        {motion?.kind === 'weigh' && motion.retractAt === undefined && <text x="120" y="22" className="weight-floor-measuring">◆ 計量中 index {motion.index}</text>}
       </g>
       <Rails />
       <Block at={[-.41, -1.02, 5]} size={[7.43, 2.28, 3]} tones={darkSteel} />

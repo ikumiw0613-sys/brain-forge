@@ -134,7 +134,7 @@ describe('weight search prototype', () => {
   })
 
   it('marks a reweigh outside the range without extending it, even with reduced motion', async () => {
-    vi.stubGlobal('matchMedia', () => ({ matches: true }))
+    vi.stubGlobal('matchMedia', () => ({ matches: true, addListener() {}, removeListener() {} }))
     await render()
     await measure(10)
     await measure(9)

@@ -3,11 +3,14 @@ import { getLiftPose, liftCenter, rackEnd, warehouseShelfX, dockIndex } from './
 import type { RobotMotion } from './robotMotion'
 import { shelfAddress, warehouseLayout } from './warehouseLayout'
 import { Rock } from './WeightSearchGantry'
+import type { SearchBounds } from './engine'
 
-export function StackedWarehouse({ size, parked, motion }: {
+export function StackedWarehouse({ size, parked, motion, bounds, pendingIndex }: {
   size: number
   parked: number
   motion: RobotMotion | null
+  bounds: SearchBounds
+  pendingIndex?: number
 }) {
   const { floors, slotsPerFloor } = warehouseLayout(size)
   const id = useId()
@@ -68,18 +71,32 @@ export function StackedWarehouse({ size, parked, motion }: {
       {Array.from({ length: floors }, (_, row) => {
         const floor = floors - 1 - row
         const start = floor * slotsPerFloor
+        const floorEnd = start + slotsPerFloor - 1
+        const hasCandidates = start <= bounds.upper && floorEnd >= bounds.lower
+        const measuring = pendingIndex !== undefined && pendingIndex >= start && pendingIndex <= floorEnd
         return (
           <g key={floor} className="weight-rack-floor" transform={`translate(0 ${floorY(floor)})`}
-            data-floor={floor + 1} data-active={floor === activeFloor}>
+            data-floor={floor + 1} data-active={floor === activeFloor} data-candidate={hasCandidates} data-measuring={measuring}>
             <rect className="weight-floor-plaque" x="24" y="0" width="108" height="60" rx="6" />
             <text x="38" y="27" className="weight-floor-title">{floor + 1}F</text>
             <text x="38" y="47" className="weight-floor-label">{start}–{start + slotsPerFloor - 1}</text>
+            {!hasCandidates && <text x="82" y="27" className="weight-floor-status">除外済</text>}
+            {measuring && <text x="510" y="-10" className="weight-floor-measuring">◆ 計量中 index {pendingIndex}</text>}
             <path className="weight-floor-frame" d="M144-4H425v65H144z M495-4h327v65H495z" />
             <path d="M144 61h281l-7 6H137z M495 61h327l-7 6H488z" fill="#405a70" />
             <path d="M145-6h280m70 0h326" stroke="#a6b9c3" strokeWidth="3" />
             {Array.from({ length: groups }, (_, group) => {
               const x = warehouseShelfX(group * groupSize + groupSize / 2 - .5, slotsPerFloor)
-              return <use key={group} href={`#${id}-bay`} x={x} />
+              const groupStart = start + group * groupSize
+              const groupEnd = groupStart + groupSize - 1
+              const count = Math.max(0, Math.min(groupEnd, bounds.upper) - Math.max(groupStart, bounds.lower) + 1)
+              return (
+                <g key={group} className="weight-rack-group" data-start={groupStart} data-end={groupEnd}
+                  data-candidate={count > 0} data-partial={count > 0 && count < groupSize}>
+                  <use href={`#${id}-bay`} x={x} />
+                  {count > 0 && <rect className="weight-rack-highlight" x={x - 30} y="4" width="60" height="51" />}
+                </g>
+              )
             })}
           </g>
         )

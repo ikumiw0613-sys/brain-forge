@@ -1,3 +1,12 @@
+import { useEffect, useRef } from 'react'
+import { Compartment, EditorState } from '@codemirror/state'
+import { EditorView, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers } from '@codemirror/view'
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
+import { bracketMatching, indentOnInput, indentUnit } from '@codemirror/language'
+import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
+import { python } from '@codemirror/lang-python'
+import { oneDark } from '@codemirror/theme-one-dark'
+import { indentationMarkers } from '@replit/codemirror-indentation-markers'
 import type { PythonReport } from './usePythonSearch'
 
 export const initialPythonCode = `async def search():
@@ -30,15 +39,61 @@ export function PythonEditor({ code, report, n, target, canRun, busy, onChange, 
   onRun: () => void
   onStop: () => void
 }) {
+  const parent = useRef<HTMLDivElement>(null)
+  const editor = useRef<EditorView | null>(null)
+  const changeHandler = useRef(onChange)
+  const editable = useRef(new Compartment())
+  changeHandler.current = onChange
+
+  useEffect(() => {
+    const view = new EditorView({
+      parent: parent.current!,
+      state: EditorState.create({
+        doc: code,
+        extensions: [
+          lineNumbers(), highlightActiveLine(), highlightActiveLineGutter(), history(),
+          python(), oneDark, indentUnit.of('    '), EditorState.tabSize.of(4), indentationMarkers(),
+          indentOnInput(), bracketMatching(), closeBrackets(),
+          keymap.of([...closeBracketsKeymap, indentWithTab, ...defaultKeymap, ...historyKeymap]),
+          editable.current.of([EditorState.readOnly.of(busy), EditorView.editable.of(!busy)]),
+          EditorView.contentAttributes.of({
+            'aria-label': 'Pythonエディタ',
+            'aria-describedby': 'weight-python-inputs',
+            spellcheck: 'false',
+            autocapitalize: 'off',
+          }),
+          EditorView.updateListener.of(update => {
+            if (update.docChanged) changeHandler.current(update.state.doc.toString())
+          }),
+        ],
+      }),
+    })
+    editor.current = view
+    return () => { view.destroy(); editor.current = null }
+    // The view lives for the lifetime of this editor; updates are applied below.
+  }, [])
+
+  useEffect(() => {
+    const view = editor.current
+    if (view && view.state.doc.toString() !== code) {
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: code } })
+    }
+  }, [code])
+
+  useEffect(() => {
+    editor.current?.dispatch({ effects: editable.current.reconfigure([
+      EditorState.readOnly.of(busy), EditorView.editable.of(!busy),
+    ]) })
+  }, [busy])
+
   return (
     <section className="weight-python" aria-labelledby="python-title">
       <div className="weight-subhead">
-        <h3 id="python-title"><label htmlFor="weight-python-code">Pythonエディタ</label></h3>
+        <h3 id="python-title">Pythonエディタ</h3>
         <span className="weight-python-status" role="status" data-status={report.status}>{statusText[report.status]}</span>
       </div>
       <p id="weight-python-inputs"><code>n = {n}</code><code>target = {target}</code><span>計量の index は 0 始まり</span></p>
-      <textarea id="weight-python-code" aria-describedby="weight-python-inputs" value={code} readOnly={busy}
-        spellCheck={false} autoCapitalize="off" autoComplete="off" onChange={event => onChange(event.target.value)} />
+      <div ref={parent} className="weight-code-editor" />
       <div className="weight-python-actions">
         <button type="button" className="weight-primary" disabled={!canRun || !code.trim()} onClick={onRun}>実行</button>
         <button type="button" className="weight-secondary" disabled={!busy} onClick={onStop}>停止</button>

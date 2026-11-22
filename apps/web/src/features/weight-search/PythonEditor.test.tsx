@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { EditorView } from '@codemirror/view'
 import type { Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PythonCommand, PythonEvent } from './pythonProtocol'
@@ -39,7 +40,7 @@ beforeEach(async () => {
   container = document.createElement('div')
   document.body.append(container)
   root = createRoot(container)
-  await act(async () => { root?.render(<StrictMode><WeightSearchPrototype initialSample={0.5} /></StrictMode>) })
+  await act(async () => { root?.render(<StrictMode><WeightSearchPrototype initialSample={0.5} random={() => 0.5} /></StrictMode>) })
 })
 
 afterEach(async () => {
@@ -87,6 +88,19 @@ function done(worker: MockWorker, index: number) {
 }
 
 describe('Python Worker integration with the weight search UI', () => {
+  it('preserves edited code across mode changes and sends it to the Worker', async () => {
+    const view = EditorView.findFromDOM(container.querySelector('.cm-editor')!)!
+    const code = 'result = await weigh(0)'
+    await act(async () => { view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: code } }) })
+    await click(button('手動'))
+    await click(button('Python'))
+    expect(EditorView.findFromDOM(container.querySelector('.cm-editor')!)?.state.doc.toString()).toBe(code)
+    const worker = await start(false)
+    expect(worker.messages[0]).toMatchObject({ type: 'run', code })
+    expect(container.querySelector('.cm-content')?.getAttribute('contenteditable')).toBe('false')
+    await click(button('停止'))
+    expect(container.querySelector('.cm-content')?.getAttribute('contenteditable')).toBe('true')
+  })
   it.each([1, 4, 16, 'instant'] as const)('returns the same result and cost at %s speed', async speed => {
     expect(container.querySelector<HTMLSelectElement>('.weight-speed select')?.value).toBe('1')
     await selectSpeed(String(speed))
@@ -211,6 +225,39 @@ describe('Python Worker integration with the weight search UI', () => {
     expect(read('.weight-map-legend')).toContain('直近 index 768')
     const candidate = container.querySelector<HTMLElement>('.weight-map-candidate')!
     expect(candidate.style.width).not.toBe('100%')
+  })
+
+  it('marks floors and every overlapping group from measured bounds, including boundary and sentinel', async () => {
+    await selectOption('select[aria-label="鉱石数"]', '1024')
+    await selectSpeed('instant')
+    const worker = await start()
+    await request(worker, 1, 255)
+    await request(worker, 2, 512)
+    await advance(32)
+    const floor = (number: number) => gantry().querySelector(`[data-floor="${number}"]`)!
+    expect(floor(1).getAttribute('data-candidate')).toBe('false')
+    expect(floor(1).textContent).toContain('除外済')
+    expect(floor(2).getAttribute('data-candidate')).toBe('true')
+    expect(floor(3).getAttribute('data-candidate')).toBe('true')
+    expect(floor(4).getAttribute('data-candidate')).toBe('false')
+    const group = floor(3).querySelector('[data-start="512"]')!
+    expect(group.getAttribute('data-end')).toBe('543')
+    expect(group.getAttribute('data-candidate')).toBe('true')
+    expect(group.getAttribute('data-partial')).toBe('true')
+    expect(floor(3).querySelector('[data-start="544"]')?.getAttribute('data-candidate')).toBe('false')
+    expect(ore(512).textContent).toContain('kg')
+    expect(ore(511).textContent).toContain('未計量')
+    await selectSpeed('1')
+    await request(worker, 3, 1023)
+    expect(floor(4).getAttribute('data-candidate')).toBe('false')
+    expect(floor(4).getAttribute('data-measuring')).toBe('true')
+    expect(floor(4).textContent).toContain('計量中 index 1023')
+    const indices = Array.from(container.querySelectorAll('.weight-nearby button'), node => node.getAttribute('data-index'))
+    expect(indices[0]).toBe('1015')
+    expect(indices.at(-1)).toBe('1023')
+    expect(ore(1023).textContent).toContain('未計量')
+    await click(button('停止'))
+    expect(floor(4).getAttribute('data-measuring')).toBe('false')
   })
   it('connects the starter code to real engine ticks and delivers ordered, once-only responses', async () => {
     const run = runButton()

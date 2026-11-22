@@ -172,7 +172,8 @@ export function WeightSearchPrototype({ initialSample, random = Math.random }: {
               {floors === 1 ?
                 <WeightSearchGantry slots={view.slots} parked={parked} motion={motion} latest={latest}
                   shipped={completion?.shipped} shippedCount={history.length} />
-                : <StackedWarehouse size={view.slots.length} parked={parked} motion={motion} />}
+                : <StackedWarehouse size={view.slots.length} parked={parked} motion={motion}
+                  bounds={view.candidates} pendingIndex={pending?.index} />}
               <CandidateSummary candidates={view.candidates} slots={view.slots} order={order} log={log} pending={pending} />
               <Warehouse view={view} motion={motion} weigh={weigh} manual={manual} />
               {manual && <div className="weight-manual-index"><label>計量する index <input type="number" min="0" max={view.slots.length - 1}
