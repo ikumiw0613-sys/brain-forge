@@ -17,6 +17,8 @@ it('starts, pauses, resumes and resets the automatic line', async () => {
   await act(async () => { root.render(<StrictMode><ManufacturingPrototype /></StrictMode>) })
   const button = (label: string) => Array.from(container.querySelectorAll('button')).find(item => item.textContent === label)!
   const stats = () => container.querySelector('.manufacturing-stats')!.textContent
+  const dashboard = () => Array.from(container.querySelectorAll('.manufacturing-dashboard dd'), value => value.textContent)
+  expect(dashboard()).toEqual(['0 Cr', '0.00 個/100 Tick', '0.0 %', '0.0 %'])
   const select = container.querySelector<HTMLSelectElement>('select[aria-label="部品供給時間"]')!
   await act(async () => { select.value = '4'; select.dispatchEvent(new Event('change', { bubbles: true })) })
   await act(async () => { button('開始').click(); vi.advanceTimersByTime(1000) })
@@ -27,14 +29,20 @@ it('starts, pauses, resumes and resets the automatic line', async () => {
   expect(stats()).toContain('累計製造時間20 Tick')
   expect(stats()).toContain('機械稼働率83.3 %')
   expect(stats()).toContain('売上100 クレジット')
+  expect(dashboard()).toEqual(['100 Cr', '4.17 個/100 Tick', '83.3 %', '16.7 %'])
   await act(async () => { button('一時停止').click() })
+  const speed = container.querySelector<HTMLSelectElement>('select[aria-label="再生速度"]')!
+  await act(async () => { speed.value = '2'; speed.dispatchEvent(new Event('change', { bubbles: true })) })
   await act(async () => { vi.advanceTimersByTime(5000) })
   expect(stats()).toContain('経過時間24 Tick')
+  expect(dashboard()).toEqual(['100 Cr', '4.17 個/100 Tick', '83.3 %', '16.7 %'])
   await act(async () => { button('再開').click() })
-  await act(async () => { vi.advanceTimersByTime(500) })
+  await act(async () => { vi.advanceTimersByTime(250) })
   expect(stats()).toContain('経過時間25 Tick')
+  expect(dashboard()).toEqual(['100 Cr', '4.00 個/100 Tick', '80.0 %', '20.0 %'])
   await act(async () => { button('リセット').click() })
   expect(stats()).toContain('経過時間0 Tick')
+  expect(dashboard()).toEqual(['0 Cr', '0.00 個/100 Tick', '0.0 %', '0.0 %'])
   expect(select.value).toBe('4')
   await act(async () => { root.unmount() })
   expect(vi.getTimerCount()).toBe(0)
@@ -183,11 +191,14 @@ it('pauses a pending measurement, refuses an unsupported result and ignores mess
 it('keeps the editor and its draft across panel changes and applies only the queued snapshot to the next order', async () => {
   const { root, click } = await openPython()
   const panel = container.querySelector<HTMLElement>('#manufacturing-code-panel')!
+  const dashboard = container.querySelector('.manufacturing-dashboard')!
   const button = (label: string) => Array.from(container.querySelectorAll('button')).find(item => item.textContent === label)!
   const first = TestWorker.instances[0]
   expect(first.run.code).toBe(initialPythonCode)
   expect(panel.hidden).toBe(true)
   await click('コードを編集')
+  expect(dashboard.nextElementSibling?.contains(panel)).toBe(true)
+  expect(dashboard.querySelectorAll('dd')).toHaveLength(4)
   expect(button('コードを編集').getAttribute('aria-expanded')).toBe('true')
   expect(panel.style.width).toBe('40vw')
   const handle = panel.querySelector<HTMLElement>('[role="separator"]')!

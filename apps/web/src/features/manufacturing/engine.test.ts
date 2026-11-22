@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createManufacturingState, productRevenue, tickManufacturing } from './engine'
+import { createManufacturingState, getManufacturingDashboard, productRevenue, tickManufacturing } from './engine'
 import type { ManufacturingState, SupplyTicks } from './engine'
 
 function advance(state: ManufacturingState, ticks: number) {
@@ -8,6 +8,25 @@ function advance(state: ManufacturingState, ticks: number) {
 }
 
 describe('manufacturing fixed tick simulation', () => {
+  it('uses elapsed ticks until the dashboard window fills and excludes expired ticks thereafter', () => {
+    const initial = createManufacturingState(4)
+    expect(getManufacturingDashboard(initial)).toEqual({ revenue: 0, productionRate: 0, utilization: 0, waitingRate: 0 })
+    const firstProduct = advance({ ...initial, running: true }, 24)
+    expect(getManufacturingDashboard(firstProduct)).toEqual({
+      revenue: 100, productionRate: 100 / 24, utilization: 2000 / 24, waitingRate: 400 / 24,
+    })
+    const fullWindow = advance(firstProduct, 476)
+    expect(getManufacturingDashboard(fullWindow)).toEqual({ revenue: 2000, productionRate: 4, utilization: 83.2, waitingRate: 16.8 })
+    const rolled = tickManufacturing(fullWindow)
+    expect(getManufacturingDashboard(rolled)).toEqual({ revenue: 2000, productionRate: 4, utilization: 83.4, waitingRate: 16.6 })
+    const expiredCompletion = advance(rolled, 23)
+    expect(getManufacturingDashboard(expiredCompletion)).toEqual({
+      ...getManufacturingDashboard(fullWindow), revenue: 2100,
+    })
+    expect(expiredCompletion.previousTotals).toHaveLength(500)
+    expect(getManufacturingDashboard(fullWindow).waitingRate).toBe(16.8)
+  })
+
   it('starts paused and leaves paused state unchanged', () => {
     const initial = createManufacturingState()
     expect(initial).toMatchObject({ tick: 0, status: 'WAITING', waiting: 0, progress: 0, completed: 0 })

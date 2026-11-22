@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { conveyorSpeeds } from '../game/conveyor'
 import type { ConveyorSpeed } from '../game/conveyor'
-import { productRevenue, productionTicks, supplyPresets } from './engine'
+import { dashboardWindowTicks, getManufacturingDashboard, productionTicks, supplyPresets } from './engine'
 import type { MachineStatus, SupplyTicks } from './engine'
 import { getWeightSearchView } from '../weight-search/engine'
 import { initialPythonCode } from '../weight-search/PythonEditor'
@@ -30,11 +30,21 @@ export function ManufacturingPrototype({ seed = defaultSupplySeed }: { seed?: nu
   const pythonMode = mode === 'python'
   const view = pythonMode ? getWeightSearchView(search) : null
   const latest = view?.log.at(-1)
+  const dashboard = getManufacturingDashboard(state)
 
   const utilization = state.tick ? (state.totalProcessing / state.tick * 100).toFixed(1) : '0.0'
   return (
     <div className="manufacturing">
       <header className="manufacturing-header"><div>◈ <strong>Brain Forge</strong><span>Gameplay Prototype 04-B</span></div></header>
+      <section className="manufacturing-dashboard" aria-label="生産ダッシュボード">
+        <p>生産指標 · 直近{dashboardWindowTicks} Tick</p>
+        <dl>
+          <div><dt>累計売上</dt><dd>{dashboard.revenue.toLocaleString('ja-JP')}<small> Cr</small></dd></div>
+          <div><dt>生産速度</dt><dd>{dashboard.productionRate.toFixed(2)}<small> 個/100 Tick</small></dd></div>
+          <div><dt>製造機械稼働率</dt><dd>{dashboard.utilization.toFixed(1)}<small> %</small></dd></div>
+          <div><dt>部品待ち率</dt><dd>{dashboard.waitingRate.toFixed(1)}<small> %</small></dd></div>
+        </dl>
+      </section>
       <div className="manufacturing-workspace">
       <main className="manufacturing-main">
         <div className="manufacturing-title"><div><p>製造ライン</p><h1>部品供給と生産</h1></div><span data-running={state.running}>{state.running ? '● 稼働中' : started ? '● 一時停止中' : '● 停止中'}</span></div>
@@ -109,7 +119,7 @@ export function ManufacturingPrototype({ seed = defaultSupplySeed }: { seed?: nu
             <div><dt>累計部品待ち</dt><dd>{state.totalWaiting}<small> Tick</small></dd></div>
             <div><dt>累計製造時間</dt><dd>{state.totalProcessing}<small> Tick</small></dd></div>
             <div><dt>機械稼働率</dt><dd>{utilization}<small> %</small></dd></div>
-            <div><dt>売上</dt><dd>{state.completed * productRevenue}<small> クレジット</small></dd></div>
+            <div><dt>売上</dt><dd>{dashboard.revenue}<small> クレジット</small></dd></div>
           </dl>
         </section>
         {view && <section className="manufacturing-panel manufacturing-python" aria-labelledby="manufacturing-warehouse">

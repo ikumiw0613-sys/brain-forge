@@ -8,6 +8,14 @@ button:focus-visible, select:focus-visible { outline: 2px solid #aaf6ef; outline
 .manufacturing-header > div { width: min(1280px, calc(100% - 48px)); min-height: 66px; margin: auto; display: flex; align-items: center; gap: 10px; color: #ffc18c; font-size: 1.3rem; }
 .manufacturing-header strong { color: #edf5fa; font-size: 1.1rem; }
 .manufacturing-header span { margin-left: auto; color: #a5b8c7; font: 700 .72rem Consolas, monospace; text-transform: uppercase; letter-spacing: .08em; }
+.manufacturing-dashboard { padding: 8px 0; background: #0c1622; border-bottom: 1px solid #2a3d50; }
+.manufacturing-dashboard > p, .manufacturing-dashboard dl { width: min(1280px, calc(100% - 48px)); margin: 0 auto; }
+.manufacturing-dashboard > p { color: #a5b8c7; font-size: .75rem; line-height: 20px; }
+.manufacturing-dashboard dl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.manufacturing-dashboard dl > div { min-width: 0; padding: 7px 12px; background: #121f2d; border: 1px solid #2f4355; border-radius: 8px; }
+.manufacturing-dashboard dt { color: #a5b8c7; font-size: .75rem; line-height: 16px; }
+.manufacturing-dashboard dd { margin: 0; color: #eef4f8; font: 700 clamp(1rem, 2vw, 1.35rem)/1.25 Consolas, monospace; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.manufacturing-dashboard dd small { color: #a5b8c7; font-size: .72rem; }
 .manufacturing-main { width: min(1280px, calc(100% - 48px)); margin: auto; padding: 28px 0 50px; display: grid; gap: 20px; }
 .manufacturing-workspace { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
 .manufacturing-main { container-type: inline-size; }
@@ -85,7 +93,11 @@ button:focus-visible, select:focus-visible { outline: 2px solid #aaf6ef; outline
   .manufacturing-stats dl > div:nth-child(n+4) { border-top: 1px solid #2f4355; }
 }
 @media (max-width: 850px) {
+  .manufacturing { --dashboard-row: 56px; --dashboard-height: calc(2 * var(--dashboard-row) + 43px); }
+  .manufacturing-dashboard { position: sticky; top: 0; z-index: 3; }
+  .manufacturing-dashboard dl { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: var(--dashboard-row); }
   .manufacturing-code-panel { position: fixed; inset: 0 0 0 auto; min-width: min(92vw, 560px); box-shadow: -12px 0 32px #0008; }
+  .manufacturing-code-panel { top: var(--dashboard-height); }
   .manufacturing-code-resize { display: none; }
   .manufacturing-layout { grid-template-columns: 1fr; }
   .manufacturing-stats dl { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -93,6 +105,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid #aaf6ef; outline
   .manufacturing-stats dl > div:nth-child(n+4) { border-top: 1px solid #2f4355; }
 }
 @media (max-width: 520px) {
+  .manufacturing-dashboard > p, .manufacturing-dashboard dl { width: calc(100% - 24px); }
   .manufacturing-header > div, .manufacturing-main { width: calc(100% - 24px); }
   .manufacturing-header span { font-size: .6rem; text-align: right; }
   .manufacturing-stats dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
