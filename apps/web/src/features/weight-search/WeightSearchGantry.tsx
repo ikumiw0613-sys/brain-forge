@@ -13,7 +13,7 @@ const railDepths = [-1.23, 1.41]
 const paintedSteel = ['#58788b', '#324d63', '#263b50'] as const
 const darkSteel = ['#38516a', '#22364b', '#162538'] as const
 
-function Rock() {
+export function Rock() {
   return (
     <g>
       <ellipse cx="0" cy="1" rx="18" ry="5" fill="#080f1c" opacity=".67" />
@@ -112,10 +112,15 @@ export function WeightSearchGantry({ slots, parked, motion, latest, shipped, shi
   }, [parked, motion])
 
   return (
-    <svg ref={svg} className="weight-gantry" viewBox="-148 -217 1053 520"
+    <svg ref={svg} className="weight-gantry" viewBox="-148 -217 1053 520" data-floor-count="1"
       role="img" aria-label="保管棚、天井走行式計量ロボット、出荷ゲート" aria-describedby="shelf-legend"
       data-target-index={motion?.index} data-parked-index={parked}>
       <FactoryFloor id={id} />
+      <g className="weight-rack-floor" data-floor="1" data-active={Boolean(motion)} transform="translate(-115 -180)">
+        <rect className="weight-floor-plaque" width="110" height="60" rx="6" />
+        <text x="14" y="27" className="weight-floor-title">1F</text>
+        <text x="14" y="47" className="weight-floor-label">0–15</text>
+      </g>
       <Rails />
       <Block at={[-.41, -1.02, 5]} size={[7.43, 2.28, 3]} tones={darkSteel} />
       {slots.map(slot => (

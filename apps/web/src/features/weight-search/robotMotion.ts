@@ -1,9 +1,12 @@
 import { getDispatchFrame } from '../../renderers/dispatchMotion'
 import type { FactoryPoint } from '../../renderers/conveyorProjection'
+import { shelfAddress } from './warehouseLayout'
 
 export const shelvesPerRow = 8
-export const dockIndex = shelvesPerRow * 2
+export const dockIndex = -1
 export const retractMs = 150
+export const weighSpeeds = [1, 4, 16, 'instant'] as const
+export type WeighSpeed = typeof weighSpeeds[number]
 const travelMs = 450
 const lowerMs = 240
 const pickupMs = 400
@@ -17,6 +20,7 @@ export type RobotMotion = Readonly<{
   from: number
   index: number
   startedAt: number
+  speed?: Exclude<WeighSpeed, 'instant'>
   retractAt?: number
 }>
 
@@ -60,12 +64,13 @@ export function getRobotPose(parked: number, motion: RobotMotion | null, now: nu
   if (!motion) return { point: shelfPoint(parked), phase: 'idle', extension: 0 }
 
   const target = shelfPoint(motion.index)
-  const elapsed = Math.max(0, now - motion.startedAt)
+  const speed = motion.speed ?? 1
+  const elapsed = Math.max(0, now - motion.startedAt) * speed
   if (still) {
     return { point: target, phase: motion.kind === 'ship' ? 'pickup' : motion.retractAt === undefined ? 'weigh' : 'raise', extension: 0 }
   }
   if (motion.retractAt !== undefined) {
-    return { point: target, phase: 'raise', extension: 1 - ease((now - motion.retractAt) / retractMs) }
+    return { point: target, phase: 'raise', extension: 1 - ease((now - motion.retractAt) * speed / retractMs) }
   }
   if (elapsed < travelMs) {
     return { point: slide(shelfPoint(motion.from), target, elapsed / travelMs), phase: 'travel', extension: 0 }
@@ -101,4 +106,49 @@ export function getRobotPose(parked: number, motion: RobotMotion | null, now: nu
     point: dock, phase: 'dispatch', extension: dockExtension * (1 - ease(stage / retractMs)), picked: true, shutterLift,
     ore: progress < .8 ? [dock[0] + intakeTravel, dock[1], gatePlatform] : undefined,
   }
+}
+
+export const liftCenter = 460
+export const rackEnd = 815
+const rackStart = 150
+const shaftGap = 38
+const dispatchX = 870
+type LiftPoint = { floor: number; x: number }
+
+export function warehouseShelfX(slot: number, slotsPerFloor: number) {
+  const half = slotsPerFloor / 2
+  const right = slot >= half
+  const start = right ? liftCenter + shaftGap : rackStart
+  const end = right ? rackEnd : liftCenter - shaftGap
+  return start + (end - start) * ((slot % half + .5) / half)
+}
+
+function liftPoint(index: number, slotsPerFloor: number): LiftPoint {
+  if (index === dockIndex) return { floor: 0, x: dispatchX }
+  const { floor, slot } = shelfAddress(index, slotsPerFloor)
+  return { floor, x: warehouseShelfX(slot, slotsPerFloor) }
+}
+
+function liftTravel(from: LiftPoint, to: LiftPoint, progress: number): LiftPoint {
+  const mix = (start: number, end: number, t: number) => start + (end - start) * ease(t)
+  if (from.floor === to.floor) return { floor: from.floor, x: mix(from.x, to.x, progress) }
+  if (progress < .25) return { floor: from.floor, x: mix(from.x, liftCenter, progress / .25) }
+  if (progress < .7) return { floor: mix(from.floor, to.floor, (progress - .25) / .45), x: liftCenter }
+  return { floor: to.floor, x: mix(liftCenter, to.x, (progress - .7) / .3) }
+}
+
+export function getLiftPose(slotsPerFloor: number, parked: number, motion: RobotMotion | null, now: number, still: boolean) {
+  const pose = getRobotPose(parked, motion, now, still)
+  if (!motion) return { ...pose, ...liftPoint(parked, slotsPerFloor), carrying: false }
+
+  const from = liftPoint(motion.from, slotsPerFloor)
+  const target = liftPoint(motion.index, slotsPerFloor)
+  const elapsed = Math.max(0, now - motion.startedAt) * (motion.speed ?? 1)
+  let position = target
+  if (pose.phase === 'travel') position = liftTravel(from, target, elapsed / travelMs)
+  if (pose.phase === 'carry') {
+    position = liftTravel(target, liftPoint(dockIndex, slotsPerFloor), (elapsed - travelMs - pickupMs) / carryMs)
+  }
+  if (pose.phase === 'unload' || pose.phase === 'dispatch') position = liftPoint(dockIndex, slotsPerFloor)
+  return { ...pose, ...position, carrying: Boolean(pose.ore) }
 }

@@ -2,12 +2,14 @@ import { useState } from 'react'
 import type { WeightSearchView } from './engine'
 import { powerPerWeigh, shippingReward, ticksPerWeigh, warehouseSizes } from './engine'
 import { initialPythonCode, PythonEditor } from './PythonEditor'
-import { shelvesPerRow } from './robotMotion'
+import { weighSpeeds } from './robotMotion'
 import type { RobotMotion } from './robotMotion'
 import { CandidateSummary, MeasurementLog, verdict } from './SearchFeedback'
 import { usePythonSearch } from './usePythonSearch'
 import { useWeightSearch } from './useWeightSearch'
 import { WeightSearchGantry } from './WeightSearchGantry'
+import { StackedWarehouse } from './StackedWarehouse'
+import { nearbySlots, shelfAddress, warehouseLayout } from './warehouseLayout'
 import './weightSearch.css'
 
 const signed = (value: number) => value > 0 ? `+${value}` : String(value)
@@ -19,48 +21,43 @@ function Warehouse({ view, motion, weigh, manual }: {
   manual: boolean
 }) {
   const unavailable = !manual || Boolean(motion || view.completion)
-  const rows = [
-    { name: '奥側', slots: view.slots.slice(0, shelvesPerRow) },
-    { name: '手前側', slots: view.slots.slice(shelvesPerRow) },
-  ]
+  const index = motion?.index ?? view.log.at(-1)?.index ?? 0
+  const { start, end } = nearbySlots(index, view.slots.length)
+  const { slotsPerFloor } = warehouseLayout(view.slots.length)
+  const address = shelfAddress(index, slotsPerFloor)
   return (
     <section className="weight-warehouse" aria-labelledby="warehouse-title">
       <div className="weight-subhead">
-        <h3 id="warehouse-title">鉱石倉庫</h3>
-        <span className="weight-sort">軽い <span aria-hidden="true">⟶</span> 重い</span>
+        <h3 id="warehouse-title">対象付近の棚</h3>
+        <span className="weight-sort">{address.floor + 1}F · 棚 {address.slot}（index {index}）</span>
       </div>
       <div className="weight-slot-legend" id="shelf-legend">
         <span><i className="weight-legend-candidate" aria-hidden="true" />候補</span>
         <span><b aria-hidden="true">×</b> 除外済み</span>
         <span><b aria-hidden="true">◆</b> ロボット操作中</span>
       </div>
-      {rows.map(row => (
-        <div key={row.name} className="weight-slots-row">
-          <span className="weight-row-name">{row.name}</span>
-          <div className="weight-slots" role="group" aria-label={row.name}>
-            {row.slots.map(({ index, measurement, candidate }) => {
-              const label = measurement ? `${measurement.weight} kg、${verdict(measurement)}` : '未計量'
-              const shipped = view.completion?.shipped.index === index
-              const active = motion?.index === index
-              const operation = active ? (view.pending ? '、計量中' : '、ロボット操作中') : ''
-              return (
-                <button key={index} type="button" aria-disabled={unavailable}
-                  aria-label={`鉱石 ${index}、${shipped ? '出荷済み、' : ''}${label}、${candidate ? '探索候補' : '除外済み'}${operation}`}
-                  onClick={() => { if (!unavailable) weigh(index) }}
-                  data-candidate={candidate} data-active={active}
-                  data-result={measurement ? (measurement.qualifies ? 'pass' : 'light') : undefined}>
-                  <span className="weight-slot-number">
-                    {!candidate && <span className="weight-slot-excluded-mark" aria-hidden="true">×</span>}
-                    {index}
-                    {active && <span className="weight-slot-active-mark" aria-hidden="true">◆</span>}
-                  </span>
-                  <span className="weight-slot-reading">{shipped ? '出荷済み' : measurement ? `${measurement.weight} kg` : '—'}</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      ))}
+      <div className="weight-slots weight-nearby" role="group" aria-label="対象付近の棚">
+        {view.slots.slice(start, end).map(({ index, measurement, candidate }) => {
+          const label = measurement ? `${measurement.weight} kg、${verdict(measurement)}` : '未計量'
+          const shipped = view.completion?.shipped.index === index
+          const active = motion?.index === index
+          const operation = active ? (view.pending ? '、計量中' : '、ロボット操作中') : ''
+          return (
+            <button key={index} type="button" aria-disabled={unavailable} data-index={index}
+              aria-label={`鉱石 ${index}、${shipped ? '出荷済み、' : ''}${label}、${candidate ? '探索候補' : '除外済み'}${operation}`}
+              onClick={() => { if (!unavailable) weigh(index) }}
+              data-candidate={candidate} data-active={active}
+              data-result={measurement ? (measurement.qualifies ? 'pass' : 'light') : undefined}>
+              <span className="weight-slot-number">
+                {!candidate && <span className="weight-slot-excluded-mark" aria-hidden="true">×</span>}
+                {index}
+                {active && <span className="weight-slot-active-mark" aria-hidden="true">◆</span>}
+              </span>
+              <span className="weight-slot-reading">{shipped ? '出荷済み' : measurement ? `${measurement.weight} kg` : '未計量'}</span>
+            </button>
+          )
+        })}
+      </div>
       <p className="weight-help">{manual
         ? '鉱石を選ぶと計量できます。計量済みの重量は下のログでも確認でき、再計量にも同じコストがかかります。'
         : 'Pythonの await weigh(index) で、同じ番号の棚を計量します。'}</p>
@@ -109,13 +106,16 @@ export function WeightSearchPrototype({ initialSample, random = Math.random }: {
   const gateReading = shipping ? `鉱石 ${motion.index} を搬送中`
     : completion ? `鉱石 ${completion.shipped.index} · ${completion.shipped.weight} kg を出荷完了`
       : canShip ? `鉱石 ${confirmed} を出荷できます` : '出荷待機'
+  const { floors, slotsPerFloor } = warehouseLayout(view.slots.length)
+  const selectedIndex = Number(manualIndex)
+  const validIndex = manualIndex !== '' && Number.isInteger(selectedIndex) && selectedIndex >= 0 && selectedIndex < view.slots.length
 
   return (
     <div className="weight-prototype">
       <header className="weight-topbar">
         <div className="weight-shell">
           <div className="weight-brand"><span className="weight-mark" aria-hidden="true">⟁</span>Brain Forge</div>
-          <span className="weight-prototype-label">GAMEPLAY PROTOTYPE 03-A</span>
+          <span className="weight-prototype-label">GAMEPLAY PROTOTYPE 03-B1</span>
         </div>
       </header>
       <main className="weight-shell weight-main">
@@ -133,12 +133,24 @@ export function WeightSearchPrototype({ initialSample, random = Math.random }: {
             </div>
           </div>
         </section>
-        <label>鉱石数 <select aria-label="鉱石数" value={view.slots.length} onChange={event => {
-          python.stop()
-          game.resize(Number(event.target.value))
-          python.clearReport()
-          setManualIndex('0')
-        }}>{warehouseSizes.map(size => <option key={size} value={size}>{size} 個</option>)}</select></label>
+        <div className="weight-warehouse-controls">
+          <label>鉱石数 <select aria-label="鉱石数" value={view.slots.length} onChange={event => {
+            python.stop()
+            game.resize(Number(event.target.value))
+            python.clearReport()
+            setManualIndex('0')
+          }}>{warehouseSizes.map(size => <option key={size} value={size}>{size} 個</option>)}</select></label>
+          <label className="weight-speed">実行速度
+            <select value={game.speed} onChange={event => {
+              const speed = weighSpeeds.find(option => String(option) === event.target.value)
+              if (speed !== undefined) game.setSpeed(speed)
+            }}>
+              {weighSpeeds.map(speed => (
+                <option key={speed} value={speed}>{speed === 'instant' ? '即時' : `${speed}×`}</option>
+              ))}
+            </select>
+          </label>
+        </div>
 
         <div className="weight-layout">
           <div className="weight-factory-column">
@@ -151,23 +163,21 @@ export function WeightSearchPrototype({ initialSample, random = Math.random }: {
                 <dd className="weight-metric-delta">{latest ? `直近 +${ticksPerWeigh} Tick` : '直近 —'}</dd></div>
             </dl>
             <section className="weight-panel weight-factory" aria-labelledby="factory-title">
-              <div className="weight-panel-head"><h2 id="factory-title">ロボット計量倉庫</h2>
-                <span className="weight-unit-cost">計量 1 回 / {powerPerWeigh} pt・{ticksPerWeigh} Tick</span></div>
-              <CandidateSummary candidates={view.candidates} slots={view.slots} order={order} log={log} />
+              <div className="weight-panel-head"><h2 id="factory-title">自動計量倉庫</h2>
+                <span className="weight-unit-cost">{floors}階層 × {slotsPerFloor}棚</span></div>
               <div className="weight-stations">
                 <div><h3>計量ロボット</h3><p role="status">{scaleReading}</p></div>
                 <div><h3>出荷ゲート</h3><p role="status">{gateReading}</p></div>
               </div>
-              {view.slots.length === 16 ? <>
+              {floors === 1 ?
                 <WeightSearchGantry slots={view.slots} parked={parked} motion={motion} latest={latest}
                   shipped={completion?.shipped} shippedCount={history.length} />
-                <Warehouse view={view} motion={motion} weigh={weigh} manual={manual} />
-              </> : <section className="weight-warehouse">
-                <p>{view.slots.length} 個の倉庫 · {pending ? `計量中 index ${pending.index}` : latest ? `直近 index ${latest.index} · ${latest.weight} kg` : '計量待機'}</p>
-                {manual && <div><label>計量する index <input type="number" min="0" max={view.slots.length - 1}
+                : <StackedWarehouse size={view.slots.length} parked={parked} motion={motion} />}
+              <CandidateSummary candidates={view.candidates} slots={view.slots} order={order} log={log} pending={pending} />
+              <Warehouse view={view} motion={motion} weigh={weigh} manual={manual} />
+              {manual && <div className="weight-manual-index"><label>計量する index <input type="number" min="0" max={view.slots.length - 1}
                   value={manualIndex} onChange={event => setManualIndex(event.target.value)} /></label>
-                  <button type="button" disabled={Boolean(motion || completion)} onClick={() => weigh(Number(manualIndex))}>計量</button></div>}
-              </section>}
+                  <button type="button" disabled={!validIndex || Boolean(motion || completion)} onClick={() => weigh(selectedIndex)}>計量</button></div>}
               <MeasurementLog log={log} target={order.requiredWeight} />
             </section>
           </div>
@@ -179,7 +189,7 @@ export function WeightSearchPrototype({ initialSample, random = Math.random }: {
               onChange={setCode} onRun={() => python.start(code)} onStop={python.stop} />}
             <div className="weight-ship-actions">
               {completion ? (
-                <button type="button" className="weight-primary" onClick={() => { nextOrder(); python.clearReport() }}>
+                <button type="button" className="weight-primary" onClick={() => { python.stop(); nextOrder(); python.clearReport() }}>
                   次の注文を受ける <span aria-hidden="true">→</span>
                 </button>
               ) : (

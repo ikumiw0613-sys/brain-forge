@@ -30,7 +30,7 @@ async function render() {
   await act(async () => { root.render(<StrictMode><WeightSearchPrototype initialSample={0.5} random={() => 0} /></StrictMode>) })
   await click(Array.from(container.querySelectorAll('button')).find(button => button.textContent === '手動')!)
 }
-const slot = (index: number) => container.querySelectorAll<HTMLButtonElement>('.weight-slots button')[index]
+const slot = (index: number) => container.querySelector<HTMLButtonElement>(`.weight-slots button[data-index="${index}"]`)!
 const primary = () => container.querySelector<HTMLButtonElement>('.weight-primary')!
 const read = (selector: string) => container.querySelector(selector)?.textContent
 const metricValues = () => Array.from(container.querySelectorAll('.weight-metrics dd:not(.weight-metric-delta)'), value => value.textContent)
@@ -38,8 +38,17 @@ const gantry = () => container.querySelector<SVGSVGElement>('.weight-gantry')!
 const click = (button: HTMLButtonElement) => act(async () => { button.click() })
 const advance = (ms: number) => act(async () => { vi.advanceTimersByTime(ms) })
 
+async function choose(index: number) {
+  const input = container.querySelector<HTMLInputElement>('.weight-manual-index input')!
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, String(index))
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await click(container.querySelector<HTMLButtonElement>('.weight-manual-index button')!)
+}
+
 async function measure(index: number) {
-  await click(slot(index))
+  await choose(index)
   await advance(2 * weightSearchTickMs + retractMs)
 }
 
@@ -47,18 +56,17 @@ describe('weight search prototype', () => {
   it('renders the manual flow and comparison, then clears revealed slots on the next order', async () => {
     await render()
     expect(read('h1')).toContain('70 kg')
-    expect(container.querySelectorAll('.weight-slots button')).toHaveLength(16)
+    expect(container.querySelectorAll('.weight-slots button')).toHaveLength(9)
     expect(Array.from(gantry().querySelectorAll('.weight-shelf-index'), label => label.textContent))
       .toEqual(Array.from({ length: 16 }, (_, index) => String(index)))
-    expect(Array.from(container.querySelectorAll('.weight-slot-reading'), reading => reading.textContent)).toEqual(Array(16).fill('—'))
-    expect(slot(10).getAttribute('aria-label')).toContain('未計量')
+    expect(Array.from(container.querySelectorAll('.weight-slot-reading'), reading => reading.textContent)).toEqual(Array(9).fill('未計量'))
     expect(read('.weight-range')).toBe('index 0〜16（17位置）')
     expect(read('.weight-no-match')).toBe('16 は該当なし')
     expect(gantry().querySelectorAll('.weight-shelf-mass')).toHaveLength(0)
     expect(container.textContent).not.toContain('76 kg')
     expect(primary().disabled).toBe(true)
 
-    await click(slot(10))
+    await choose(10)
     expect(gantry().dataset.targetIndex).toBe('10')
     expect(gantry().querySelector('[data-index="10"]')?.getAttribute('data-target')).toBe('true')
     expect(gantry().dataset.phase).toBe('travel')
@@ -110,7 +118,7 @@ describe('weight search prototype', () => {
     expect(read('.weight-order')).toContain('ORD-002')
     expect(read('h1')).toContain('12 kg')
     expect(read('.weight-log')).toContain('0 件')
-    expect(slot(10).getAttribute('aria-label')).toContain('未計量')
+    expect(gantry().querySelector('[data-index="10"] .weight-shelf-mass')).toBeNull()
     expect(read('.weight-range')).toBe('index 0〜16（17位置）')
     expect(gantry().querySelectorAll('.weight-shelf-mass')).toHaveLength(0)
     expect(container.textContent).not.toContain('76 kg')

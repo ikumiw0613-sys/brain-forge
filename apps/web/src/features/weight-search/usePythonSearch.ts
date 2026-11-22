@@ -45,6 +45,7 @@ export function usePythonSearch(game: WeightSearchGame) {
     active.current = null
     dispose(run)
     if (run.weighing) game.cancelWeigh()
+    game.flushMeasurements()
     setReport(result)
   }
 
@@ -86,6 +87,7 @@ export function usePythonSearch(game: WeightSearchGame) {
       reject(`1回の実行で計量できる上限は ${pythonLimits.measurements} 回です。`)
       return
     }
+    run.weighing = true
     const accepted = game.weigh(index, ({ weight }) => {
       if (active.current !== run) return
       run.weighing = false
@@ -97,12 +99,12 @@ export function usePythonSearch(game: WeightSearchGame) {
       send(run, { type: 'weighed', runId: run.id, requestId, weight })
     })
     if (!accepted) {
+      run.weighing = false
       reject('現在の注文で計量を開始できませんでした。')
       return
     }
     run.measurements++
-    run.weighing = true
-    armTimer(run)
+    if (run.weighing) armTimer(run)
   }
 
   function start(code: string) {

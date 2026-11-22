@@ -1,5 +1,6 @@
 import { countPositions, powerPerWeigh, ticksPerWeigh } from './engine'
 import type { Measurement, SearchBounds, WeightSearchView } from './engine'
+import { warehouseLayout } from './warehouseLayout'
 
 export const verdict = (result: Measurement) => result.qualifies ? '条件を満たす' : '必要重量未満'
 
@@ -13,12 +14,16 @@ function describeExcluded(excluded: SearchBounds, n: number) {
   return `index ${shelves}${excluded.upper === n ? ' と「該当なし」' : ''}`
 }
 
-export function CandidateSummary({ candidates, slots, order, log }: Pick<WeightSearchView, 'candidates' | 'slots' | 'order' | 'log'>) {
+export function CandidateSummary({ candidates, slots, order, log, pending }: Pick<WeightSearchView, 'candidates' | 'slots' | 'order' | 'log' | 'pending'>) {
   const latest = log.at(-1)
   const n = slots.length
+  const { floors } = warehouseLayout(n)
+  const index = pending?.index ?? latest?.index
+  const start = Math.min(candidates.lower, n)
+  const end = Math.min(candidates.upper + 1, n)
   return (
     <section className="weight-search-status" aria-labelledby="candidate-title">
-      <h3 id="candidate-title">正解位置の候補</h3>
+      <h3 id="candidate-title">探索の全体マップ（{n.toLocaleString()}棚）</h3>
       <div role="status" aria-atomic="true">
         <div className="weight-range-heading">
           <div className="weight-range">index <strong>{formatBounds(candidates)}</strong><span>（{candidates.count}位置）</span></div>
@@ -27,10 +32,22 @@ export function CandidateSummary({ candidates, slots, order, log }: Pick<WeightS
           </span>
         </div>
         <div className="weight-range-scale">
-          <div className="weight-range-track" aria-hidden="true">
-            {slots.length <= 16 && slots.map(({ index, candidate }) => <span key={index} data-candidate={candidate} />)}
+          <div className="weight-map-axis" aria-hidden="true">
+            <div className="weight-map-track">
+              {end > start && <span className="weight-map-candidate" style={{ left: `${start / n * 100}%`, width: `${(end - start) / n * 100}%` }} />}
+              {Array.from({ length: floors - 1 }, (_, index) => (
+                <span key={index} className="weight-map-floor-line" style={{ left: `${(index + 1) / floors * 100}%` }} />
+              ))}
+              {index !== undefined && <span className="weight-map-marker" style={{ left: `${(index + .5) / n * 100}%` }} />}
+            </div>
+            <div className="weight-map-ends"><span>0</span><span>{n - 1}</span></div>
           </div>
           {candidates.upper === n && <span className="weight-no-match">{n} は該当なし</span>}
+        </div>
+        <div className="weight-map-legend">
+          <span><i className="weight-map-key candidate" aria-hidden="true" />候補</span>
+          <span><i className="weight-map-key" aria-hidden="true" />除外済み</span>
+          {index !== undefined && <span><i className="weight-map-key current" aria-hidden="true" />{pending ? '計量中' : '直近'} index {index}</span>}
         </div>
         <p className="weight-range-change">
           {latest ? <>
