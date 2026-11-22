@@ -13,7 +13,7 @@ const paint = {
   crate: ['#61788d', '#354c62', '#25364b'],
 } as const
 
-function Block({ at, size, tones = paint.steel, stroke = '#7892a7' }: {
+export function Block({ at, size, tones = paint.steel, stroke = '#7892a7' }: {
   at: readonly [number, number, number]
   size: readonly [number, number, number]
   tones?: readonly [string, string, string]

@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PythonCommand, PythonEvent } from './pythonProtocol'
+import { retractMs, shipmentMs } from './robotMotion'
 import { pythonLimits } from './usePythonSearch'
 import { weightSearchTickMs } from './useWeightSearch'
 import { WeightSearchPrototype } from './WeightSearchPrototype'
@@ -52,9 +53,10 @@ const button = (label: string) => Array.from(container.querySelectorAll('button'
 const runButton = () => button('実行')
 const ore = (index: number) => container.querySelectorAll<HTMLButtonElement>('.weight-slots button')[index]
 const read = (selector: string) => container.querySelector(selector)?.textContent
+const gantry = () => container.querySelector<SVGSVGElement>('.weight-gantry')!
 const click = (node: HTMLButtonElement) => act(async () => { node.click() })
 const advance = (ms: number) => act(async () => { vi.advanceTimersByTime(ms) })
-const measureTime = 2 * weightSearchTickMs
+const measureTime = 2 * weightSearchTickMs + retractMs
 
 async function unmount() {
   await act(async () => { root?.unmount() })
@@ -90,13 +92,22 @@ describe('Python Worker integration with the weight search UI', () => {
     await act(async () => { worker.emit({ type: 'ready', runId: worker.runId }) })
     expect(read('.weight-python-status')).toContain('実行中')
     await request(worker, 1, 0)
-    expect(read('.weight-stations div:first-child')).toContain('鉱石 01 を計量中')
+    expect(read('.weight-stations div:first-child')).toContain('鉱石 0 を計量中')
+    expect(gantry().dataset.targetIndex).toBe('0')
+    expect(read('.weight-range')).toBe('index 0〜16（17位置）')
     await request(worker, 1, 0)
     await request(worker, 2, 3)
     expect(worker.messages.at(-1)).toMatchObject({ type: 'weighError', requestId: 2, message: expect.stringContaining('動作中') })
     await advance(weightSearchTickMs)
     expect(worker.messages).toHaveLength(2)
     await advance(weightSearchTickMs)
+    expect(read('.weight-stations div:first-child')).toContain('12 kg')
+    expect(read('.weight-metrics')).toContain('10 pt')
+    expect(read('.weight-range')).toBe('index 1〜16（16位置）')
+    expect(worker.messages).toHaveLength(2)
+    await advance(retractMs - 1)
+    expect(worker.messages).toHaveLength(2)
+    await advance(1)
     expect(worker.messages.at(-1)).toEqual({ type: 'weighed', runId: 1, requestId: 1, weight: 12 })
     await request(worker, 2, 3)
     expect(worker.messages).toHaveLength(3)
@@ -105,15 +116,16 @@ describe('Python Worker integration with the weight search UI', () => {
     await request(worker, 4, 10)
     await advance(measureTime)
     expect(worker.messages.filter(message => message.type === 'weighed').map(message => message.weight)).toEqual([12, 69, 76])
-    expect(button('鉱石 11 を出荷する→').disabled).toBe(true)
+    expect(button('鉱石 10 を出荷する→').disabled).toBe(true)
     await done(worker, 10)
     expect(worker.terminate).toHaveBeenCalledOnce()
     expect(read('.weight-python-result')).toContain('result = 10')
     expect(read('.weight-python-result')).toContain('正解。')
     expect(read('.weight-python-result')).toContain('3 回 · 30 pt · 6 Tick')
     expect(read('.weight-totals')).toContain('0 クレジット')
-    const ship = button('鉱石 11 を出荷する→')
+    const ship = button('鉱石 10 を出荷する→')
     await act(async () => { ship.click(); ship.click() })
+    await advance(shipmentMs)
     expect(read('.weight-totals')).toContain('100 クレジット')
     expect(read('.weight-totals')).toContain('30 pt')
   })
@@ -148,18 +160,23 @@ describe('Python Worker integration with the weight search UI', () => {
     await advance(measureTime)
     expect(read('.weight-totals')).toContain('累計消費電力10 pt')
     expect(ore(9).getAttribute('aria-label')).toContain('未計量')
+    expect(read('.weight-range')).toBe('index 1〜16（16位置）')
+    expect(container.querySelectorAll('.weight-log li')).toHaveLength(1)
 
     const second = await start()
     expect(second.runId).toBeGreaterThan(first.runId)
     expect(second.messages[0]).toMatchObject({ n: 16, target: 70 })
     expect(ore(0).getAttribute('aria-label')).toContain('未計量')
     expect(read('.weight-order')).toContain('ORD-001')
+    expect(read('.weight-range')).toBe('index 0〜16（17位置）')
+    expect(container.querySelectorAll('.weight-log li')).toHaveLength(0)
     await act(async () => {
       stale(new MessageEvent('message', { data: { type: 'weigh', runId: first.runId, requestId: 3, index: 10 } }))
       second.emit({ type: 'weigh', runId: first.runId, requestId: 4, index: 10 })
     })
     await advance(measureTime)
     expect(ore(10).getAttribute('aria-label')).toContain('未計量')
+    expect(read('.weight-range')).toBe('index 0〜16（17位置）')
     await request(second, 1, 0)
     await advance(measureTime)
     expect(second.messages.at(-1)).toMatchObject({ type: 'weighed', weight: 12 })
@@ -186,6 +203,37 @@ describe('Python Worker integration with the weight search UI', () => {
     expect(active.terminate).toHaveBeenCalledOnce()
     expect(runButton().disabled).toBe(false)
     expect(read('.weight-totals')).toContain('累計消費電力0 pt')
+
+    const afterMeasurement = await start()
+    await request(afterMeasurement, 1, 9)
+    await advance(measureTime + pythonLimits.idleMs)
+    expect(afterMeasurement.terminate).toHaveBeenCalledOnce()
+    expect(read('.weight-range')).toBe('index 10〜16（7位置）')
+    expect(read('.weight-log li')).toContain('10位置を除外')
+    expect(read('.weight-totals')).toContain('累計消費電力10 pt')
+  })
+
+  it('parks a stopped robot during retraction without undoing a committed measurement or replying', async () => {
+    const worker = await start()
+    await request(worker, 1, 15)
+    await advance(2 * weightSearchTickMs)
+    expect(gantry().dataset.phase).toBe('raise')
+    await click(button('停止'))
+    expect(gantry().dataset.phase).toBe('idle')
+    expect(gantry().dataset.parkedIndex).toBe('15')
+    expect(gantry().querySelector('.weight-claw')?.getAttribute('transform')).toBe('translate(0 0)')
+    await advance(retractMs)
+    expect(worker.messages).toHaveLength(1)
+    expect(read('.weight-totals')).toContain('累計消費電力10 pt')
+    expect(ore(15).getAttribute('aria-label')).toContain('128 kg')
+    expect(read('.weight-range')).toBe('index 0〜15（16位置）')
+    expect(read('.weight-range-change')).toContain('「該当なし」 を除外')
+    const next = await start()
+    expect(ore(15).getAttribute('aria-label')).toContain('未計量')
+    expect(read('.weight-range')).toBe('index 0〜16（17位置）')
+    await request(next, 1, 7)
+    expect(gantry().dataset.targetIndex).toBe('7')
+    expect(gantry().dataset.parkedIndex).toBe('15')
   })
 
   it('enforces the per-run measurement limit and cleans up on unmount', async () => {
@@ -198,7 +246,8 @@ describe('Python Worker integration with the weight search UI', () => {
     })
     await request(worker, pythonLimits.measurements + 1, 0)
     expect(worker.messages.at(-1)).toMatchObject({ type: 'weighError', message: expect.stringContaining('100 回') })
-    expect(read('.weight-metrics')).toBe('計量回数100 回今回の消費電力1000 pt今回の処理時間200 Tick')
+    expect(Array.from(container.querySelectorAll('.weight-metrics dd:not(.weight-metric-delta)'), value => value.textContent))
+      .toEqual(['100 回', '1000 pt', '200 Tick'])
     await unmount()
     expect(worker.terminate).toHaveBeenCalledOnce()
     expect(vi.getTimerCount()).toBe(0)

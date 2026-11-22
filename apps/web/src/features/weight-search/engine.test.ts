@@ -36,6 +36,7 @@ describe('weight search engine', () => {
     const initial = create()
     const initialView = getWeightSearchView(initial)
     expect(initialView).not.toHaveProperty('weights')
+    expect(initialView.candidates).toEqual({ lower: 0, upper: 16, count: 17, resolved: false })
     expect(initialView.slots).toEqual(Array.from({ length: 16 }, (_, index) => ({ index, candidate: true, measurement: undefined })))
     for (const index of [-1, 16, 0.5, NaN]) expect(play(initial, { type: 'weigh', index })).toBe(initial)
 
@@ -47,25 +48,42 @@ describe('weight search engine', () => {
     })
     const measured = play(firstTick, { type: 'tick' })
     expect(getWeightSearchView(measured)).toMatchObject({
-      log: [{ index: 9, weight: 69, qualifies: false }], candidates: { first: 10, last: 15 },
+      log: [{ index: 9, weight: 69, qualifies: false, excluded: { lower: 0, upper: 9 } }],
+      candidates: { lower: 10, upper: 16, count: 7, resolved: false },
       cost: { count: 1, power: 10, ticks: 2 }, totalPower: 10, credits: 0, pending: null,
     })
     expect(getWeightSearchView(measured).slots[9].measurement?.weight).toBe(69)
     expect(getWeightSearchView(measured).slots[10].measurement).toBeUndefined()
     expect(play(measured, { type: 'tick' })).toBe(measured)
     expect(getWeightSearchView(weigh(measured, 9))).toMatchObject({
-      cost: { count: 2, power: 20, ticks: 4 }, totalPower: 20, candidates: { first: 10, last: 15 },
+      cost: { count: 2, power: 20, ticks: 4 }, totalPower: 20, candidates: { lower: 10, upper: 16 },
     })
+    expect(getWeightSearchView(weigh(measured, 9)).log.at(-1)?.excluded).toBeNull()
+  })
+
+  it('narrows in either order and retains the exact exclusions of each measurement', () => {
+    const initial = create()
+    const aboveFirst = getWeightSearchView(weigh(initial, 12, 8, 8, 5, 14))
+    const belowFirst = getWeightSearchView(weigh(initial, 8, 12))
+    expect(aboveFirst.candidates).toEqual({ lower: 9, upper: 12, count: 4, resolved: false })
+    expect(belowFirst.candidates).toEqual(aboveFirst.candidates)
+    expect(aboveFirst.log.map(({ excluded }) => excluded)).toEqual([
+      { lower: 13, upper: 16 }, { lower: 0, upper: 8 }, null, null, null,
+    ])
+    expect(aboveFirst.slots.filter(slot => slot.candidate).map(slot => slot.index)).toEqual([9, 10, 11, 12])
+    expect(aboveFirst.slots[5]).toMatchObject({ candidate: false, measurement: { weight: 43 } })
+    expect(aboveFirst.slots[11]).toEqual({ index: 11, candidate: true, measurement: undefined })
+    expect(aboveFirst.slots[15]).toEqual({ index: 15, candidate: false, measurement: undefined })
   })
 
   it('requires the adjacent boundary, ships the lower bound and rewards only once', () => {
     const initial = create()
     expect(play(initial, { type: 'nextOrder', sample: 0 })).toBe(initial)
     const found = weigh(initial, 10, 7, 14)
-    expect(getWeightSearchView(found)).toMatchObject({ candidates: { first: 8, last: 10 }, confirmed: null })
+    expect(getWeightSearchView(found)).toMatchObject({ candidates: { lower: 8, upper: 10 }, confirmed: null })
     expect(play(found, { type: 'ship', index: 10 })).toBe(found)
     const solved = weigh(found, 9)
-    expect(getWeightSearchView(solved)).toMatchObject({ candidates: { first: 10, last: 10 }, confirmed: 10 })
+    expect(getWeightSearchView(solved)).toMatchObject({ candidates: { lower: 10, upper: 10, count: 1, resolved: true }, confirmed: 10 })
     expect(play(solved, { type: 'ship', index: 14 })).toBe(solved)
     const busy = play(solved, { type: 'weigh', index: 10 })
     expect(play(busy, { type: 'ship', index: 10 })).toBe(busy)
@@ -88,7 +106,8 @@ describe('weight search engine', () => {
     expect(lowerBound(defaultWeights, 129)).toBe(16)
     expect(getWeightSearchView(weigh(create(0), 0)).confirmed).toBe(0)
     const lastCandidate = weigh(create(0.999), 14)
-    expect(getWeightSearchView(lastCandidate)).toMatchObject({ candidates: { first: 15, last: 15 }, confirmed: null })
+    expect(getWeightSearchView(lastCandidate)).toMatchObject({ candidates: { lower: 15, upper: 16, count: 2, resolved: false }, confirmed: null })
+    expect(getWeightSearchView(weigh(lastCandidate, 15)).log.at(-1)?.excluded).toEqual({ lower: 16, upper: 16 })
     expect(play(lastCandidate, { type: 'ship', index: 15 })).toBe(lastCandidate)
     expect(getWeightSearchView(weigh(lastCandidate, 15)).confirmed).toBe(15)
   })
@@ -101,7 +120,14 @@ describe('weight search engine', () => {
     expect(assessSearchResult(measured, 11)).toMatchObject({ correct: false, verified: false })
     const noMatch = { ...state, order: { ...state.order, requiredWeight: 129 } }
     expect(assessSearchResult(noMatch, 16)).toMatchObject({ correct: true, verified: false })
-    expect(assessSearchResult(weigh(noMatch, 15), 16)).toMatchObject({ correct: true, verified: true })
+    const resolved = weigh(noMatch, 15)
+    expect(assessSearchResult(resolved, 16)).toMatchObject({ correct: true, verified: true })
+    const view = getWeightSearchView(resolved)
+    expect(view.candidates).toEqual({ lower: 16, upper: 16, count: 1, resolved: true })
+    expect(view.confirmed).toBeNull()
+    expect(view.slots).toHaveLength(16)
+    expect(view.slots.every(slot => !slot.candidate)).toBe(true)
+    expect(play(resolved, { type: 'ship', index: 16 })).toBe(resolved)
   })
 
   it('cancels an unfinished weigh and resets attempts without changing the order or cumulative cost', () => {
@@ -115,7 +141,7 @@ describe('weight search engine', () => {
     expect(reset.order).toBe(initial.order)
     expect(reset.weights).toBe(initial.weights)
     expect(getWeightSearchView(reset)).toMatchObject({
-      credits: 0, totalPower: 10, log: [], pending: null, candidates: { first: 0, last: 15 },
+      credits: 0, totalPower: 10, log: [], pending: null, candidates: { lower: 0, upper: 16, count: 17, resolved: false },
     })
   })
 

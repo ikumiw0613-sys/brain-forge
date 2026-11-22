@@ -16,11 +16,14 @@ export type Measurement = Readonly<{
   qualifies: boolean
 }>
 
+export type SearchBounds = Readonly<{ lower: number; upper: number }>
+type MeasurementEntry = Measurement & Readonly<{ excluded: SearchBounds | null }>
+
 type Cost = Readonly<{ count: number; power: number; ticks: number }>
 type Completion = Readonly<{
   order: Order
   shipped: Measurement
-  log: readonly Measurement[]
+  log: readonly MeasurementEntry[]
   actual: Cost
   linear: Cost
   savedPower: number
@@ -32,9 +35,8 @@ type State = Readonly<{
   weights: readonly number[]
   order: Order
   pending: Pending | null
-  log: readonly Measurement[]
-  lastTooLight: number
-  firstQualifying: number
+  log: readonly MeasurementEntry[]
+  bounds: SearchBounds
   history: readonly Completion[]
   totalPower: number
 }>
@@ -68,8 +70,7 @@ function emptyAttempt(size: number) {
   return {
     pending: null,
     log: [],
-    lastTooLight: -1,
-    firstQualifying: size,
+    bounds: { lower: 0, upper: size },
   }
 }
 
@@ -100,9 +101,24 @@ function cost(count: number): Cost {
   return { count, power: count * powerPerWeigh, ticks: count * ticksPerWeigh }
 }
 
+export function countPositions({ lower, upper }: SearchBounds) {
+  return upper - lower + 1
+}
+
+function narrowBounds(previous: SearchBounds, { index, qualifies }: Measurement) {
+  const bounds = qualifies
+    ? { lower: previous.lower, upper: Math.min(previous.upper, index) }
+    : { lower: Math.max(previous.lower, index + 1), upper: previous.upper }
+  // A weighing can move only one end of the inclusive interval.
+  const excluded = bounds.lower > previous.lower ? { lower: previous.lower, upper: bounds.lower - 1 }
+    : bounds.upper < previous.upper ? { lower: bounds.upper + 1, upper: previous.upper }
+      : null
+  return { bounds, excluded }
+}
+
 function confirmedIndex(state: State): number | null {
-  const { lastTooLight, firstQualifying, weights } = state
-  return firstQualifying < weights.length && firstQualifying === lastTooLight + 1 ? firstQualifying : null
+  const { bounds: { lower, upper }, weights } = state
+  return lower === upper && upper < weights.length ? upper : null
 }
 
 function currentCompletion(state: State): Completion | undefined {
@@ -111,11 +127,9 @@ function currentCompletion(state: State): Completion | undefined {
 }
 
 export function assessSearchResult(state: State, index: number) {
-  const { weights, order, log } = state
+  const { weights, order, log, bounds } = state
   const correct = index === lowerBound(weights, order.requiredWeight)
-  const verified = correct && (index === weights.length
-    ? state.lastTooLight === weights.length - 1
-    : index === confirmedIndex(state))
+  const verified = correct && bounds.lower === index && bounds.upper === index
   return { correct, verified, cost: cost(log.length) }
 }
 
@@ -132,13 +146,13 @@ export function weightSearchReducer(state: State, action: WeightSearchAction): S
       const elapsedTicks = pending.elapsedTicks + 1
       if (elapsedTicks < ticksPerWeigh) return { ...state, pending: { index, elapsedTicks } }
       const weight = weights[index]
-      const qualifies = weight >= order.requiredWeight
+      const measurement = { index, weight, qualifies: weight >= order.requiredWeight }
+      const { bounds, excluded } = narrowBounds(state.bounds, measurement)
       return {
         ...state,
         pending: null,
-        log: [...log, { index, weight, qualifies }],
-        lastTooLight: qualifies ? state.lastTooLight : Math.max(state.lastTooLight, index),
-        firstQualifying: qualifies ? Math.min(state.firstQualifying, index) : state.firstQualifying,
+        log: [...log, { ...measurement, excluded }],
+        bounds,
         totalPower: state.totalPower + powerPerWeigh,
       }
     }
@@ -167,17 +181,15 @@ export function weightSearchReducer(state: State, action: WeightSearchAction): S
 }
 
 export function getWeightSearchView(state: State) {
-  const { order, pending, log, weights, history } = state
-  const first = state.lastTooLight + 1
-  const last = Math.min(state.firstQualifying, weights.length - 1)
+  const { order, pending, log, weights, history, bounds } = state
   const measured = new Map(log.map(result => [result.index, result]))
   return {
     order, pending, log,
     history: history.map(({ order, actual, savedPower }) => ({ order, actual, savedPower })),
     slots: weights.map((_, index) => ({
-      index, measurement: measured.get(index), candidate: index >= first && index <= last,
+      index, measurement: measured.get(index), candidate: index >= bounds.lower && index <= bounds.upper,
     })),
-    candidates: { first, last },
+    candidates: { ...bounds, count: countPositions(bounds), resolved: bounds.lower === bounds.upper },
     confirmed: confirmedIndex(state),
     completion: currentCompletion(state),
     cost: cost(log.length),
