@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assessSearchResult, createWarehouse, createWeightSearch, defaultWeights, generateOrder, getWeightSearchView, lowerBound, weightSearchReducer } from './engine'
+import { assessSearchResult, createWarehouse, createWeightSearch, defaultWeights, generateOrder, generateWeights, getWeightSearchView, lowerBound, weightSearchReducer } from './engine'
 import type { WeightSearchAction } from './engine'
 
 const create = (sample = 0.5) => createWeightSearch(defaultWeights, sample)
@@ -9,6 +9,46 @@ const weigh = (state: ReturnType<typeof create>, ...indices: number[]) =>
   indices.reduce((current, index) => play(current, { type: 'weigh', index }, { type: 'tick' }, { type: 'tick' }), state)
 
 describe('weight search engine', () => {
+  it.each([16, 64, 256, 1024])('generates and searches %i weights', size => {
+    let seed = 12
+    const random = () => { seed = (seed * 17 + 13) % 997; return seed / 997 }
+    const weights = generateWeights(size, random)
+    expect(weights).toHaveLength(size)
+    expect(weights.every((weight, index) => weight > (weights[index - 1] ?? 0))).toBe(true)
+    const state = createWeightSearch(weights, 0.7)
+    const target = state.order.requiredWeight
+    const answer = lowerBound(weights, target)
+    expect(weights.findIndex(weight => weight >= target)).toBe(answer)
+    let linear = state
+    for (let index = 0; index <= answer; index++) linear = weigh(linear, index)
+    expect(getWeightSearchView(linear)).toMatchObject({
+      confirmed: answer, cost: { count: answer + 1, power: (answer + 1) * 10, ticks: (answer + 1) * 2 },
+    })
+    let current = state
+    let left = 0
+    let right = size
+    while (left < right) {
+      const mid = Math.floor((left + right) / 2)
+      current = weigh(current, mid)
+      if (current.log.at(-1)!.weight < target) left = mid + 1
+      else right = mid
+    }
+    expect(left).toBe(answer)
+    expect(getWeightSearchView(current)).toMatchObject({ confirmed: answer, candidates: { lower: answer, upper: answer }, cost: { power: current.log.length * 10, ticks: current.log.length * 2 } })
+    expect(play(state, { type: 'weigh', index: size })).toBe(state)
+  })
+  it('changes warehouse and order while retaining completed orders and cumulative cost', () => {
+    const measured = weigh(create(), 9, 10)
+    const completed = play(measured, { type: 'ship', index: 10 })
+    const next = play(completed, { type: 'resize', weights: generateWeights(64, () => 0.5), sample: 0.25 })
+    const view = getWeightSearchView(next)
+    expect(view.order.id).toBe('ORD-002')
+    expect(view.slots).toHaveLength(64)
+    expect(view.log).toEqual([])
+    expect(view.totalPower).toBe(20)
+    expect(view.credits).toBe(100)
+    expect(view.candidates).toMatchObject({ lower: 0, upper: 64 })
+  })
   it('sorts a copy of 16 unique positive integers and accepts a custom data set', () => {
     const weights = Array.from({ length: 16 }, (_, index) => 3 * (16 - index))
     const state = createWeightSearch(weights, 0)

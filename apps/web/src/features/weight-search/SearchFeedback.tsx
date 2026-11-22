@@ -28,7 +28,7 @@ export function CandidateSummary({ candidates, slots, order, log }: Pick<WeightS
         </div>
         <div className="weight-range-scale">
           <div className="weight-range-track" aria-hidden="true">
-            {slots.map(({ index, candidate }) => <span key={index} data-candidate={candidate} />)}
+            {slots.length <= 16 && slots.map(({ index, candidate }) => <span key={index} data-candidate={candidate} />)}
           </div>
           {candidates.upper === n && <span className="weight-no-match">{n} は該当なし</span>}
         </div>

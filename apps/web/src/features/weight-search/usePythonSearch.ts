@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { WeightSearchGame } from './useWeightSearch'
 import type { PythonCommand, PythonEvent } from './pythonProtocol'
 
-export const pythonLimits = { loadingMs: 45_000, executionMs: 120_000, idleMs: 10_000, measurements: 100 } as const
+export const pythonLimits = { loadingMs: 45_000, executionMs: 1_800_000, idleMs: 10_000, measurements: 1024 } as const
 
 export type PythonReport =
   | { status: 'idle' | 'loading' | 'running' | 'stopped' }

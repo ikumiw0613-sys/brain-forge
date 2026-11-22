@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getConveyorTickMs } from '../game/conveyor'
-import { assessSearchResult, createWeightSearch, defaultWeights, getWeightSearchView, weightSearchReducer } from './engine'
+import { assessSearchResult, createWeightSearch, defaultWeights, generateWeights, getWeightSearchView, weightSearchReducer } from './engine'
 import type { Measurement, WeightSearchAction } from './engine'
 import { dockIndex, retractMs, shipmentMs } from './robotMotion'
 import type { RobotMotion } from './robotMotion'
@@ -52,6 +52,11 @@ export function useWeightSearch(initialSample: number, random: () => number) {
   return {
     view: getWeightSearchView(state),
     robot,
+    resize(size: number) {
+      clearClock()
+      publishRobot({ parked: 0, motion: null })
+      apply({ type: 'resize', weights: generateWeights(size, random), sample: random() })
+    },
     beginAttempt() {
       if (currentRobot.current.motion) return
       const next = apply({ type: 'resetAttempt' })

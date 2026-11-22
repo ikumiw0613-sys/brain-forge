@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { WeightSearchView } from './engine'
-import { powerPerWeigh, shippingReward, ticksPerWeigh } from './engine'
+import { powerPerWeigh, shippingReward, ticksPerWeigh, warehouseSizes } from './engine'
 import { initialPythonCode, PythonEditor } from './PythonEditor'
 import { shelvesPerRow } from './robotMotion'
 import type { RobotMotion } from './robotMotion'
@@ -97,6 +97,7 @@ export function WeightSearchPrototype({ initialSample, random = Math.random }: {
   const python = usePythonSearch(game)
   const [manual, setManual] = useState(false)
   const [code, setCode] = useState(initialPythonCode)
+  const [manualIndex, setManualIndex] = useState('0')
   const { view, robot, weigh, ship, nextOrder } = game
   const { parked, motion } = robot
   const { order, cost, pending, confirmed, completion, log, history } = view
@@ -114,7 +115,7 @@ export function WeightSearchPrototype({ initialSample, random = Math.random }: {
       <header className="weight-topbar">
         <div className="weight-shell">
           <div className="weight-brand"><span className="weight-mark" aria-hidden="true">⟁</span>Brain Forge</div>
-          <span className="weight-prototype-label">GAMEPLAY PROTOTYPE 02-C</span>
+          <span className="weight-prototype-label">GAMEPLAY PROTOTYPE 03-A</span>
         </div>
       </header>
       <main className="weight-shell weight-main">
@@ -132,6 +133,12 @@ export function WeightSearchPrototype({ initialSample, random = Math.random }: {
             </div>
           </div>
         </section>
+        <label>鉱石数 <select aria-label="鉱石数" value={view.slots.length} onChange={event => {
+          python.stop()
+          game.resize(Number(event.target.value))
+          python.clearReport()
+          setManualIndex('0')
+        }}>{warehouseSizes.map(size => <option key={size} value={size}>{size} 個</option>)}</select></label>
 
         <div className="weight-layout">
           <div className="weight-factory-column">
@@ -151,9 +158,16 @@ export function WeightSearchPrototype({ initialSample, random = Math.random }: {
                 <div><h3>計量ロボット</h3><p role="status">{scaleReading}</p></div>
                 <div><h3>出荷ゲート</h3><p role="status">{gateReading}</p></div>
               </div>
-              <WeightSearchGantry slots={view.slots} parked={parked} motion={motion} latest={latest}
-                shipped={completion?.shipped} shippedCount={history.length} />
-              <Warehouse view={view} motion={motion} weigh={weigh} manual={manual} />
+              {view.slots.length === 16 ? <>
+                <WeightSearchGantry slots={view.slots} parked={parked} motion={motion} latest={latest}
+                  shipped={completion?.shipped} shippedCount={history.length} />
+                <Warehouse view={view} motion={motion} weigh={weigh} manual={manual} />
+              </> : <section className="weight-warehouse">
+                <p>{view.slots.length} 個の倉庫 · {pending ? `計量中 index ${pending.index}` : latest ? `直近 index ${latest.index} · ${latest.weight} kg` : '計量待機'}</p>
+                {manual && <div><label>計量する index <input type="number" min="0" max={view.slots.length - 1}
+                  value={manualIndex} onChange={event => setManualIndex(event.target.value)} /></label>
+                  <button type="button" disabled={Boolean(motion || completion)} onClick={() => weigh(Number(manualIndex))}>計量</button></div>}
+              </section>}
               <MeasurementLog log={log} target={order.requiredWeight} />
             </section>
           </div>

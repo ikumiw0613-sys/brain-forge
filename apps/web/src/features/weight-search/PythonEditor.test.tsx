@@ -79,6 +79,22 @@ function done(worker: MockWorker, index: number) {
 }
 
 describe('Python Worker integration with the weight search UI', () => {
+  it('stops the current run and passes the new warehouse size to the next worker', async () => {
+    const worker = await start()
+    await request(worker, 1, 0)
+    const select = container.querySelector<HTMLSelectElement>('select[aria-label="鉱石数"]')!
+    await act(async () => { select.value = '1024'; select.dispatchEvent(new Event('change', { bubbles: true })) })
+    expect(worker.terminate).toHaveBeenCalledOnce()
+    expect(read('.weight-range')).toBe('index 0〜1024（1025位置）')
+    expect(container.querySelectorAll('.weight-shelf')).toHaveLength(0)
+    const next = await start()
+    expect(next.messages[0]).toMatchObject({ type: 'run', n: 1024 })
+    await request(next, 1, 1023)
+    await advance(measureTime)
+    expect(next.messages.at(-1)).toMatchObject({ type: 'weighed', requestId: 1 })
+    await request(next, 2, 1024)
+    expect(next.messages.at(-1)).toMatchObject({ type: 'weighError' })
+  })
   it('connects the starter code to real engine ticks and delivers ordered, once-only responses', async () => {
     const run = runButton()
     await act(async () => { run.click(); run.click() })
@@ -245,11 +261,11 @@ describe('Python Worker integration with the weight search UI', () => {
       }
     })
     await request(worker, pythonLimits.measurements + 1, 0)
-    expect(worker.messages.at(-1)).toMatchObject({ type: 'weighError', message: expect.stringContaining('100 回') })
+    expect(worker.messages.at(-1)).toMatchObject({ type: 'weighError', message: expect.stringContaining('1024 回') })
     expect(Array.from(container.querySelectorAll('.weight-metrics dd:not(.weight-metric-delta)'), value => value.textContent))
-      .toEqual(['100 回', '1000 pt', '200 Tick'])
+      .toEqual(['1024 回', '10240 pt', '2048 Tick'])
     await unmount()
     expect(worker.terminate).toHaveBeenCalledOnce()
     expect(vi.getTimerCount()).toBe(0)
-  })
+  }, 30000)
 })

@@ -1,4 +1,14 @@
-const warehouseSize = 16
+export const warehouseSizes = [16, 64, 256, 1024] as const
+export function generateWeights(size: number, random: () => number): number[] {
+  if (!warehouseSizes.some(option => option === size)) throw new RangeError('Invalid warehouse size')
+  let weight = 0
+  return Array.from({ length: size }, () => {
+    const sample = random()
+    if (!(sample >= 0 && sample < 1)) throw new RangeError('Invalid random sample')
+    weight += 1 + Math.floor(sample * 9)
+    return weight
+  })
+}
 export const defaultWeights = [12, 19, 27, 31, 36, 43, 51, 58, 64, 69, 76, 84, 91, 103, 116, 128] as const
 export const powerPerWeigh = 10
 export const ticksPerWeigh = 2
@@ -48,11 +58,12 @@ export type WeightSearchAction =
   | { type: 'resetAttempt' }
   | { type: 'ship'; index: number }
   | { type: 'nextOrder'; sample: number }
+  | { type: 'resize'; weights: readonly number[]; sample: number }
 
 export function createWarehouse(weights: readonly number[]): readonly number[] {
-  if (weights.length !== warehouseSize || [...weights].some(weight => !Number.isSafeInteger(weight) || weight <= 0) ||
-    new Set(weights).size !== warehouseSize) {
-    throw new RangeError('The warehouse needs 16 distinct positive integer weights.')
+  if (!warehouseSizes.some(size => size === weights.length) || [...weights].some(weight => !Number.isSafeInteger(weight) || weight <= 0) ||
+    new Set(weights).size !== weights.length) {
+    throw new RangeError('The warehouse needs a supported number of distinct positive integer weights.')
   }
   return [...weights].sort((left, right) => left - right)
 }
@@ -60,9 +71,10 @@ export function createWarehouse(weights: readonly number[]): readonly number[] {
 export function generateOrder(min: number, max: number, sample: number, previous?: Order): Order {
   if (!(sample >= 0 && sample < 1)) throw new RangeError('The random sample must be in [0, 1).')
   const number = (previous?.number ?? 0) + 1
-  let requiredWeight = min + Math.floor(sample * (max - min + (previous ? 0 : 1)))
+  const excludePrevious = previous !== undefined && previous.requiredWeight >= min && previous.requiredWeight <= max
+  let requiredWeight = min + Math.floor(sample * (max - min + (excludePrevious ? 0 : 1)))
   // Sample the integer range with the previous threshold removed.
-  if (previous && requiredWeight >= previous.requiredWeight) requiredWeight++
+  if (excludePrevious && requiredWeight >= previous.requiredWeight) requiredWeight++
   return { number, id: `ORD-${String(number).padStart(3, '0')}`, requiredWeight }
 }
 
@@ -136,6 +148,10 @@ export function assessSearchResult(state: State, index: number) {
 export function weightSearchReducer(state: State, action: WeightSearchAction): State {
   const { weights, order, pending, log } = state
   switch (action.type) {
+    case 'resize': {
+      const warehouse = createWarehouse(action.weights)
+      return { ...state, weights: warehouse, ...beginOrder(warehouse, action.sample, order) }
+    }
     case 'weigh':
       if (pending || currentCompletion(state) ||
         !Number.isInteger(action.index) || action.index < 0 || action.index >= weights.length) return state
