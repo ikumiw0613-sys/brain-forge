@@ -37,6 +37,7 @@ export function FactoryWarehouse({ runtime }: { runtime: FactoryRuntime }) {
             </section>
             <aside className="manufacturing-panel manufacturing-controls">
               <div className="manufacturing-panel-heading"><h2>製造工場へ供給</h2></div>
+              <p><a className="manufacturing-map-link" href={`${import.meta.env.BASE_URL}map/?view=benchmark`}>アルゴリズム性能試験</a></p>
               <p>製造ラインの稼働中は、Pythonで選んだ部品を確認し、自動で製造工場へ送ります。</p>
               <p>{delivery ? `直近の発送：${delivery.orderId} · 棚 ${delivery.index} · ${delivery.weight} kg` : 'まだ発送していません'}</p>
               <label>計量速度<select value={instant ? 'instant' : 'normal'} onChange={event => setInstant(event.target.value === 'instant')}>

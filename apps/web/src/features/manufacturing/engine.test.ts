@@ -10,21 +10,35 @@ function advance(state: ManufacturingState, ticks: number) {
 describe('manufacturing fixed tick simulation', () => {
   it('uses elapsed ticks until the dashboard window fills and excludes expired ticks thereafter', () => {
     const initial = createManufacturingState(4)
-    expect(getManufacturingDashboard(initial)).toEqual({ revenue: 0, productionRate: 0, utilization: 0, waitingRate: 0 })
+    expect(getManufacturingDashboard(initial)).toEqual({
+      revenue: 0, revenueRate: 0, windowTicks: 0, productionRate: 0, utilization: 0, waitingRate: 0,
+    })
     const firstProduct = advance({ ...initial, running: true }, 24)
     expect(getManufacturingDashboard(firstProduct)).toEqual({
-      revenue: 100, productionRate: 100 / 24, utilization: 2000 / 24, waitingRate: 400 / 24,
+      revenue: 100, revenueRate: 10_000 / 24, windowTicks: 24, productionRate: 100 / 24,
+      utilization: 2000 / 24, waitingRate: 400 / 24,
     })
     const fullWindow = advance(firstProduct, 476)
-    expect(getManufacturingDashboard(fullWindow)).toEqual({ revenue: 2000, productionRate: 4, utilization: 83.2, waitingRate: 16.8 })
+    expect(getManufacturingDashboard(fullWindow)).toEqual({
+      revenue: 2000, revenueRate: 400, windowTicks: 500, productionRate: 4, utilization: 83.2, waitingRate: 16.8,
+    })
     const rolled = tickManufacturing(fullWindow)
-    expect(getManufacturingDashboard(rolled)).toEqual({ revenue: 2000, productionRate: 4, utilization: 83.4, waitingRate: 16.6 })
-    const expiredCompletion = advance(rolled, 23)
+    expect(getManufacturingDashboard(rolled)).toEqual({
+      ...getManufacturingDashboard(fullWindow), utilization: 83.4, waitingRate: 16.6,
+    })
+    const beforeExpiry = advance(rolled, 22)
+    expect(getManufacturingDashboard(beforeExpiry)).toMatchObject({ revenue: 2100, revenueRate: 420, windowTicks: 500 })
+    const expiredCompletion = tickManufacturing(beforeExpiry)
     expect(getManufacturingDashboard(expiredCompletion)).toEqual({
       ...getManufacturingDashboard(fullWindow), revenue: 2100,
     })
     expect(expiredCompletion.previousTotals).toHaveLength(500)
     expect(getManufacturingDashboard(fullWindow).waitingRate).toBe(16.8)
+  })
+
+  it.each([[100, 5, 500], [200, 6, 300]])('normalizes confirmed sales over %i elapsed ticks', (tick, completed, revenueRate) => {
+    const state = { ...createManufacturingState(), tick, completed }
+    expect(getManufacturingDashboard(state)).toMatchObject({ revenue: completed * 100, revenueRate, windowTicks: tick })
   })
 
   it('starts paused and leaves paused state unchanged', () => {
@@ -41,6 +55,7 @@ describe('manufacturing fixed tick simulation', () => {
     expect(received).toMatchObject({ tick: 4, status: 'RECEIVED', progress: 0, totalWaiting: 4 })
     const processing = advance(received, 19)
     expect(processing).toMatchObject({ tick: 23, status: 'PROCESSING', progress: 19, completed: 0 })
+    expect(getManufacturingDashboard(processing)).toMatchObject({ revenue: 0, revenueRate: 0 })
     const complete = tickManufacturing(processing)
     expect(complete).toMatchObject({ tick: 24, status: 'COMPLETED', completed: 1, progress: 20, totalProcessing: 20 })
     expect(complete.completed * productRevenue).toBe(100)

@@ -1,0 +1,25 @@
+.benchmark-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.benchmark-controls { display: grid; gap: 10px; padding: 16px 18px; color: #b5c6d5; font-size: .85rem; }
+.benchmark-controls p { margin: 0; }
+.benchmark-controls .manufacturing-buttons { padding: 0; max-width: 340px; }
+.benchmark-controls textarea {
+  width: 100%;
+  min-height: 250px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid #526c80;
+  border-radius: 8px;
+  background: #0b1422;
+  color: #eef4f8;
+  font: .875rem/1.55 Consolas, monospace;
+  tab-size: 4;
+}
+.benchmark-controls textarea:focus-visible { outline: 2px solid #aaf6ef; outline-offset: 2px; }
+.benchmark-controls pre { max-height: 180px; margin: 0; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.benchmark-error { color: #ffc0b2; }
+.benchmark-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 6px 0 0; }
+.benchmark-metrics > div { padding: 9px; border: 1px solid #31485d; border-radius: 8px; }
+.benchmark-metrics dd { margin: 5px 0 0; color: #eef4f8; font: 700 1rem Consolas, monospace; overflow-wrap: anywhere; }
+@media (max-width: 750px) {
+  .benchmark-layout { grid-template-columns: minmax(0, 1fr); }
+}

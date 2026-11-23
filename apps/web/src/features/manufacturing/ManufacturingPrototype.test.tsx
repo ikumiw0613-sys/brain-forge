@@ -28,13 +28,19 @@ const navigate = (selector: string) => act(async () => {
 const toWarehouse = () => navigate('.manufacturing-controls a')
 const toFactory = () => navigate('.factory-warehouse a[href="/prototypes/manufacturing/"]')
 
-it('needs a warehouse delivery, produces while the map is open, and retains pause, resume and reset', async () => {
+it.each([[1, 500], [2, 250]])('updates map revenue at %i× and retains it across pause and navigation', async (rate, tickMs) => {
   const { root, click } = await openPython()
   const dashboard = () => Array.from(container.querySelectorAll('.manufacturing-dashboard dd'), value => value.textContent)
   await toFactory()
   expect(dashboard()).toEqual(['0 Cr', '0.00 個/100 Tick', '0.0 %', '0.0 %'])
   expect(container.querySelector('#manufacturing-code-panel')).toBeNull()
   expect(container.querySelector('select')?.getAttribute('aria-label')).toBe('再生速度')
+  const setSpeed = (rate: number) => act(async () => {
+    const speed = container.querySelector<HTMLSelectElement>('select[aria-label="再生速度"]')!
+    speed.value = String(rate)
+    speed.dispatchEvent(new Event('change', { bubbles: true }))
+  })
+  await setSpeed(rate)
   await advance(12_000)
   expect(metric('製造完了数')).toBe('0 個')
   expect(metric('累計製造時間')).toBe('0 Tick')
@@ -58,11 +64,17 @@ it('needs a warehouse delivery, produces while the map is open, and retains paus
   expect(container.querySelector('.manufacturing-stats')).toBeNull()
   expect(container.querySelector('.map-cargo')).toBeNull()
   expect(vi.getTimerCount()).toBe(1)
-  await advance(500)
+  const mapMetrics = () => Array.from(container.querySelectorAll('.map-revenue dd'), value => value.textContent)
+  expect(mapMetrics()).toEqual(['0 Cr/100 Tick', '0 Cr', `経過${waiting} Tick`])
+  await advance(tickMs)
   expect(container.querySelector('[data-activity="producing"]')).not.toBeNull()
   expect(container.querySelector('.map-progress')?.getAttribute('data-progress')).toBe('1')
-  await advance(9500)
+  expect(mapMetrics()).toEqual(['0 Cr/100 Tick', '0 Cr', `経過${waiting + 1} Tick`])
+  await advance(tickMs * 19)
   expect(container.querySelector('[data-activity="producing"]')).toBeNull()
+  const revenueRate = (10_000 / (waiting + 20)).toLocaleString('ja-JP', { maximumFractionDigits: 2 })
+  const mapBeforePause = [`${revenueRate} Cr/100 Tick`, '100 Cr', `経過${waiting + 20} Tick`]
+  expect(mapMetrics()).toEqual(mapBeforePause)
   await navigate('[data-facility="factory"] a')
   expect(location.pathname).toBe('/prototypes/manufacturing/')
   expect(metric('製造完了数')).toBe('1 個')
@@ -72,9 +84,11 @@ it('needs a warehouse delivery, produces while the map is open, and retains paus
   const displayed = dashboard()
   expect(displayed[0]).toBe('100 Cr')
   await click('一時停止')
-  const speed = container.querySelector<HTMLSelectElement>('select[aria-label="再生速度"]')!
-  await act(async () => { speed.value = '2'; speed.dispatchEvent(new Event('change', { bubbles: true })) })
+  await setSpeed(2)
+  await navigate('.manufacturing-map-link')
   await act(async () => { vi.advanceTimersByTime(5000) })
+  expect(mapMetrics()).toEqual(mapBeforePause)
+  await navigate('[data-facility="factory"] a')
   expect(metric('経過時間')).toBe(`${waiting + 20} Tick`)
   expect(dashboard()).toEqual(displayed)
   await click('再開')
@@ -83,6 +97,8 @@ it('needs a warehouse delivery, produces while the map is open, and retains paus
   await click('リセット')
   expect(metric('経過時間')).toBe('0 Tick')
   expect(dashboard()).toEqual(['0 Cr', '0.00 個/100 Tick', '0.0 %', '0.0 %'])
+  await navigate('.manufacturing-map-link')
+  expect(mapMetrics()).toEqual(['0 Cr/100 Tick', '0 Cr', '経過0 Tick'])
   await act(async () => { root.unmount() })
   expect(vi.getTimerCount()).toBe(0)
 })
@@ -192,6 +208,66 @@ it('processes the same consecutive orders with both strategies and preserves fix
   expect(binary.targets).toEqual(linear.targets)
   expect(binary.targets[0]).not.toBe(binary.targets[1])
   expect(binary.count).toBeLessThan(linear.count)
+}, 20_000)
+
+it('snapshots benchmark code and isolates trial failure and cancellation from the running factory', async () => {
+  const { root, click } = await openPython()
+  const factory = TestWorker.instances[0]
+  await click('コードを編集')
+  const factoryEditor = EditorView.findFromDOM(container.querySelector('.cm-editor')!)!
+  const queued = `${initialPythonCode}\n# factory queue`
+  await act(async () => factoryEditor.dispatch({ changes: { from: 0, to: factoryEditor.state.doc.length, insert: queued } }))
+  await click('適用')
+  await navigate('a[href="/map/?view=benchmark"]')
+  expect(container.querySelector('textarea')?.value).toBe(queued)
+  await click('試験開始')
+  const first = TestWorker.instances[1]
+  expect(first.run).toMatchObject({ code: queued, n: 256 })
+  const edit = 'raise RuntimeError("new draft")'
+  await act(async () => {
+    const textarea = container.querySelector('textarea')!
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(textarea, edit)
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  expect(container.querySelector('.benchmark details pre')?.textContent).toBe(queued)
+  await first.emit({ type: 'ready', runId: first.run.runId })
+  let lower = 0
+  let upper = first.run.n
+  let requestId = 0
+  while (lower < upper) {
+    const index = (lower + upper) >>> 1
+    await first.emit({ type: 'weigh', runId: first.run.runId, requestId: ++requestId, index })
+    const reply = first.commands.at(-1)
+    if (reply?.type !== 'weighed') throw new Error('Expected a benchmark measurement')
+    if (reply.weight < first.run.target) lower = index + 1
+    else upper = index
+  }
+  await first.emit({ type: 'finished', runId: first.run.runId, index: lower })
+  expect(first.terminate).toHaveBeenCalledOnce()
+  expect(metric('確定売上')).toBe('100 Cr')
+  expect(metric('計測Tick')).toBe(`${requestId * 2 + 20} Tick`)
+  const second = TestWorker.instances[2]
+  expect(second.run.code).toBe(queued)
+  const stale = second.onmessage!
+  await click('中断')
+  expect(second.terminate).toHaveBeenCalledOnce()
+  await click('試験開始')
+  const retry = TestWorker.instances[3]
+  expect(retry.run.code).toBe(edit)
+  await act(async () => stale(new MessageEvent('message', { data: { type: 'failed', runId: second.run.runId, message: 'stale' } })))
+  expect(container.querySelector('.benchmark [role="alert"]')).toBeNull()
+  await retry.emit({ type: 'failed', runId: retry.run.runId, message: 'new draft' })
+  expect(retry.terminate).toHaveBeenCalledOnce()
+  expect(container.querySelector('.benchmark [role="status"]')?.textContent).toBe('失敗')
+  expect(metric('確定売上')).toBe('0 Cr')
+  await navigate('.benchmark a[href="/map/"]')
+  expect(container.querySelectorAll('.map-revenue dd')[1]?.textContent).toBe('0 Cr')
+  await navigate('[data-facility="warehouse"] a')
+  expect(container.textContent).toContain('適用待ち')
+  expect(factory.run.code).toBe(initialPythonCode)
+  expect(factory.terminate).not.toHaveBeenCalled()
+  await act(async () => root.unmount())
+  expect(factory.terminate).toHaveBeenCalledOnce()
 }, 20_000)
 
 it('pauses a pending measurement, refuses an unsupported result and ignores messages after reset', async () => {

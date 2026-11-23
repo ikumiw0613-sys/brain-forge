@@ -13,9 +13,9 @@ function sample(seed: number, position: number) {
   return ((value ^ (value >>> 15)) >>> 0) / 2 ** 32
 }
 
-export function createPythonSupply(supplyTicks: SupplyTicks, seed: number) {
+export function createPythonSupply(supplyTicks: SupplyTicks, seed: number, size = supplyWarehouseSize) {
   let position = 0
-  const weights = generateWeights(supplyWarehouseSize, () => sample(seed, ++position))
+  const weights = generateWeights(size, () => sample(seed, ++position))
   return {
     line: createManufacturingState(supplyTicks),
     search: createWeightSearch(weights, sample(seed, ++position)),
@@ -33,7 +33,7 @@ export function tickPythonSupply(state: PythonSupply): PythonSupply {
     return {
       ...state,
       line: { ...line, status: 'WAITING', waiting: 0, progress: 0 },
-      search: advanceWeightSearchOrder(search, sample(seed, supplyWarehouseSize + search.order.number + 1)),
+      search: advanceWeightSearchOrder(search, sample(seed, search.weights.length + search.order.number + 1)),
     }
   }
   if (line.status === 'WAITING' && !search.pending) return state

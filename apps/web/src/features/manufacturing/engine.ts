@@ -23,10 +23,14 @@ export function createManufacturingState(supplyTicks: SupplyTicks = 16): Manufac
 export function getManufacturingDashboard(state: ManufacturingState) {
   const ticks = Math.min(state.tick, dashboardWindowTicks)
   const baseline = state.previousTotals[(state.tick - ticks) % dashboardWindowTicks]
+  // The baseline already includes completions at its Tick, so the window is (tick - ticks, tick].
+  const completedInWindow = state.completed - (baseline?.completed ?? 0)
   const perHundred = (value: number) => ticks === 0 ? 0 : value * 100 / ticks
   return {
     revenue: state.completed * productRevenue,
-    productionRate: perHundred(state.completed - (baseline?.completed ?? 0)),
+    revenueRate: perHundred(completedInWindow * productRevenue),
+    windowTicks: ticks,
+    productionRate: perHundred(completedInWindow),
     utilization: perHundred(state.totalProcessing - (baseline?.totalProcessing ?? 0)),
     waitingRate: perHundred(state.totalWaiting - (baseline?.totalWaiting ?? 0)),
   }

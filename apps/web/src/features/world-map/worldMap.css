@@ -15,10 +15,11 @@ body { margin: 0; min-width: 320px; }
 .map-main h1 { margin: 0; font-size: clamp(1.55rem, 4vw, 2.55rem); }
 .map-overview { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; margin-bottom: 23px; }
 .map-instruction { margin: 8px 0 0; color: #b5c6d5; font-size: .9rem; }
-.map-revenue { margin: 0; padding: 8px 14px; border: 1px solid #31485d; border-radius: 8px; background: #121f2d; }
-.map-revenue > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.map-revenue { display: flex; flex-wrap: wrap; gap: 8px 18px; max-width: 100%; margin: 0; padding: 8px 14px; border: 1px solid #31485d; border-radius: 8px; background: #121f2d; }
+.map-revenue > div { display: grid; gap: 3px; }
 .map-revenue dt, .map-revenue small { color: #b5c6d5; font-size: .8rem; }
 .map-revenue dd { margin: 0; color: #a2f5e5; font: 700 1.2rem Consolas, monospace; font-variant-numeric: tabular-nums; }
+.map-revenue .map-revenue-window dd { align-self: center; color: #eef4f8; font-size: .85rem; }
 .map-site {
   display: block;
   width: 100%;

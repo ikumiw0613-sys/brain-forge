@@ -1,5 +1,6 @@
 import { memo, useEffect, useState } from 'react'
 import type { MouseEvent } from 'react'
+import { BenchmarkScreen } from '../benchmark/BenchmarkScreen'
 import { ManufacturingPrototype } from '../manufacturing/ManufacturingPrototype'
 import { getManufacturingDashboard } from '../manufacturing/engine'
 import { WorldMap } from '../world-map/WorldMap'
@@ -10,17 +11,19 @@ const mapPath = `${import.meta.env.BASE_URL}map/`
 const manufacturingPath = `${import.meta.env.BASE_URL}prototypes/manufacturing/`
 const MapScreen = memo(WorldMap)
 
-function currentScreen(): 'manufacturing' | 'warehouse' | 'map' {
+function currentScreen(): 'manufacturing' | 'warehouse' | 'benchmark' | 'map' {
   if (window.location.pathname === manufacturingPath) return 'manufacturing'
-  return new URLSearchParams(window.location.search).get('view') === 'warehouse' ? 'warehouse' : 'map'
+  const view = new URLSearchParams(window.location.search).get('view')
+  return view === 'warehouse' || view === 'benchmark' ? view : 'map'
 }
 
-const titles = { manufacturing: '製造ライン', warehouse: '部品倉庫', map: '工場拠点マップ' }
+const titles = { manufacturing: '製造ライン', warehouse: '部品倉庫', benchmark: '性能試験', map: '工場拠点マップ' }
 
 export function FactoryApp() {
   const runtime = useFactoryRuntime()
   const [screen, setScreen] = useState(currentScreen)
   const { line, search, lastDelivery } = runtime.line
+  const dashboard = screen === 'map' ? getManufacturingDashboard(line) : undefined
 
   useEffect(() => {
     const onPopState = () => setScreen(currentScreen())
@@ -52,9 +55,10 @@ export function FactoryApp() {
     <div onClick={navigate}>
       {screen === 'manufacturing' ? <ManufacturingPrototype runtime={runtime} />
         : screen === 'warehouse' ? <FactoryWarehouse runtime={runtime} />
+          : screen === 'benchmark' ? <BenchmarkScreen initialCode={runtime.draft} />
           : <MapScreen measuring={search.pending !== null} running={line.running}
             machineStatus={line.status} progress={line.progress} delivery={lastDelivery}
-            revenue={getManufacturingDashboard(line).revenue} />}
+            revenue={dashboard?.revenue} revenueRate={dashboard?.revenueRate} windowTicks={dashboard?.windowTicks} />}
     </div>
   )
 }

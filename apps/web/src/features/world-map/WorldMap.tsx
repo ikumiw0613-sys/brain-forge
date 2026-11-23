@@ -1,5 +1,5 @@
 import { useId, useState, useSyncExternalStore } from 'react'
-import { productionTicks } from '../manufacturing/engine'
+import { dashboardWindowTicks, productionTicks } from '../manufacturing/engine'
 import type { MachineStatus } from '../manufacturing/engine'
 import { FacilityBuilding } from './FacilityBuilding'
 import type { FacilityKind } from './FacilityBuilding'
@@ -40,10 +40,12 @@ type MapActivity = {
   progress?: number
   delivery?: { readonly orderId: string } | null
   revenue?: number
+  revenueRate?: number
+  windowTicks?: number
 }
 
 export function WorldMap({ measuring = false, running = false, machineStatus,
-  progress = 0, delivery = null, revenue = 0 }: MapActivity) {
+  progress = 0, delivery = null, revenue = 0, revenueRate = 0, windowTicks = 0 }: MapActivity) {
   const narrow = useSyncExternalStore(subscribeToViewport, isNarrowViewport)
   const layout = narrow ? narrowSite : wideSite
   const grid = useId()
@@ -69,7 +71,9 @@ export function WorldMap({ measuring = false, running = false, machineStatus,
             <p className="map-instruction">主搬送路：部品倉庫 → 製造工場 → 出荷センター</p>
           </div>
           <dl className="map-revenue">
+            <div><dt>生産効率</dt><dd>{revenueRate.toLocaleString('ja-JP', { maximumFractionDigits: 2 })} <small>Cr/100 Tick</small></dd></div>
             <div><dt>累計売上</dt><dd>{revenue.toLocaleString('ja-JP')} <small>Cr</small></dd></div>
+            <div className="map-revenue-window"><dt>計測区間</dt><dd>{windowTicks === dashboardWindowTicks ? '直近' : '経過'}{windowTicks} Tick</dd></div>
           </dl>
         </div>
         <svg className="map-site" viewBox={`0 0 ${layout.width} ${layout.height}`} role="group" aria-label="工場施設">
