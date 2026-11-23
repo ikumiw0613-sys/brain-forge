@@ -36,6 +36,8 @@ button:focus-visible, summary:focus-visible, .weight-log ol:focus-visible {
   gap: 14px;
 }
 .weight-brand { display: flex; align-items: center; gap: 11px; font-size: 1.18rem; font-weight: 750; }
+.weight-map-link { color: #a2f5e5; font-size: .8rem; white-space: nowrap; text-underline-offset: 3px; }
+.weight-map-link:focus-visible { outline: 2px solid #aaf6ef; outline-offset: 3px; }
 .weight-mark {
   display: grid;
   place-items: center;
@@ -414,8 +416,8 @@ button:focus-visible, summary:focus-visible, .weight-log ol:focus-visible {
 
 @media (max-width: 620px) {
   .weight-shell { width: calc(100% - 24px); }
-  .weight-topbar .weight-shell { min-height: 55px; }
-  .weight-brand { white-space: nowrap; }
+  .weight-topbar .weight-shell { min-height: 55px; gap: 8px; }
+  .weight-brand { gap: 6px; font-size: 1rem; white-space: nowrap; }
   .weight-prototype-label { font-size: .62rem; letter-spacing: .04em; }
   .weight-main { gap: 12px; padding-top: 14px; }
   .weight-overview, .weight-layout { gap: 12px; }

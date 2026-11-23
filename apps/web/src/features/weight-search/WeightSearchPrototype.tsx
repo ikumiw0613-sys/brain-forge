@@ -115,6 +115,7 @@ export function WeightSearchPrototype({ initialSample, random = Math.random }: {
       <header className="weight-topbar">
         <div className="weight-shell">
           <div className="weight-brand"><span className="weight-mark" aria-hidden="true">⟁</span>Brain Forge</div>
+          <a className="weight-map-link" href={`${import.meta.env.BASE_URL}map/`}>工場マップ</a>
           <span className="weight-prototype-label">GAMEPLAY PROTOTYPE 03-B1</span>
         </div>
       </header>

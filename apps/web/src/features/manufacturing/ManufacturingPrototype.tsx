@@ -35,7 +35,10 @@ export function ManufacturingPrototype({ seed = defaultSupplySeed }: { seed?: nu
   const utilization = state.tick ? (state.totalProcessing / state.tick * 100).toFixed(1) : '0.0'
   return (
     <div className="manufacturing">
-      <header className="manufacturing-header"><div>◈ <strong>Brain Forge</strong><span>Gameplay Prototype 04-B</span></div></header>
+      <header className="manufacturing-header"><div>◈ <strong>Brain Forge</strong>
+        <a className="manufacturing-map-link" href={`${import.meta.env.BASE_URL}map/`}>工場マップ</a>
+        <span>Gameplay Prototype 04-B</span>
+      </div></header>
       <section className="manufacturing-dashboard" aria-label="生産ダッシュボード">
         <p>生産指標 · 直近{dashboardWindowTicks} Tick</p>
         <dl>

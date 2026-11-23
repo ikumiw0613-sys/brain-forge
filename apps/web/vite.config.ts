@@ -23,6 +23,7 @@ export default defineConfig({
     rolldownOptions: {
       input: [
         resolve(import.meta.dirname, 'index.html'),
+        resolve(import.meta.dirname, 'map/index.html'),
         resolve(import.meta.dirname, 'prototypes/conveyor/index.html'),
         resolve(import.meta.dirname, 'prototypes/weight-search/index.html'),
         resolve(import.meta.dirname, 'prototypes/manufacturing/index.html'),
