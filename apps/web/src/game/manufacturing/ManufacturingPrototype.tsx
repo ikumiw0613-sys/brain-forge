@@ -1,8 +1,8 @@
-import { conveyorSpeeds } from '../game/conveyor'
-import type { FactoryRuntime } from '../factory/useFactoryRuntime'
+import { conveyorSpeeds } from '../../features/game/conveyor'
+import type { FactoryRuntime } from '../../features/factory/useFactoryRuntime'
 import { dashboardWindowTicks, getManufacturingDashboard, productionTicks } from '../../factory/manufacturing/engine'
 import type { MachineStatus } from '../../factory/manufacturing/engine'
-import '../weight-search/weightSearch.css'
+import '../../features/weight-search/weightSearch.css'
 import './manufacturing.css'
 
 const labels: Record<MachineStatus, string> = {

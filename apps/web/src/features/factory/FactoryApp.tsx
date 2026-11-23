@@ -1,11 +1,11 @@
 import { memo, useEffect, useState } from 'react'
 import type { MouseEvent } from 'react'
 import { BenchmarkScreen } from '../benchmark/BenchmarkScreen'
-import { ManufacturingPrototype } from '../manufacturing/ManufacturingPrototype'
+import { ManufacturingPrototype } from '../../game/manufacturing/ManufacturingPrototype'
 import { getManufacturingDashboard } from '../../factory/manufacturing/engine'
-import { WorldMap } from '../world-map/WorldMap'
+import { WorldMap } from '../../game/world-map/WorldMap'
 import { useFactoryRuntime } from './useFactoryRuntime'
-import { FactoryWarehouse } from './FactoryWarehouse'
+import { FactoryWarehouse } from '../../game/warehouse/FactoryWarehouse'
 
 const mapPath = `${import.meta.env.BASE_URL}map/`
 const manufacturingPath = `${import.meta.env.BASE_URL}prototypes/manufacturing/`
