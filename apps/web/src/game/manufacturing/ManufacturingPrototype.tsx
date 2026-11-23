@@ -1,5 +1,5 @@
 import { conveyorSpeeds } from '../../features/game/conveyor'
-import type { FactoryRuntime } from '../../features/factory/useFactoryRuntime'
+import type { FactoryRuntime } from '../../factory/runtime/useFactoryRuntime'
 import { dashboardWindowTicks, getManufacturingDashboard, productionTicks } from '../../factory/manufacturing/engine'
 import type { MachineStatus } from '../../factory/manufacturing/engine'
 import '../../features/weight-search/weightSearch.css'

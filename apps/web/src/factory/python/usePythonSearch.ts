@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { WeightSearchGame } from './useWeightSearch'
-
-type PythonWeighingGame = Pick<WeightSearchGame, 'beginAttempt' | 'assess' | 'weigh' | 'cancelWeigh' | 'flushMeasurements'>
+import type { PythonWeighingPort } from './PythonWeighingPort'
 import type { PythonCommand, PythonEvent } from './pythonProtocol'
 
 export const pythonLimits = { loadingMs: 45_000, executionMs: 1_800_000, idleMs: 10_000, measurements: 1024 } as const
@@ -9,7 +7,7 @@ export const pythonLimits = { loadingMs: 45_000, executionMs: 1_800_000, idleMs:
 export type PythonReport =
   | { status: 'idle' | 'loading' | 'running' | 'stopped' }
   | { status: 'failed'; message: string }
-  | ({ status: 'finished'; index: number } & ReturnType<WeightSearchGame['assess']>)
+  | ({ status: 'finished'; index: number } & ReturnType<PythonWeighingPort['assess']>)
 
 type ActiveRun = {
   id: number
@@ -33,7 +31,7 @@ function dispose(run: ActiveRun) {
   run.worker.terminate()
 }
 
-export function usePythonSearch(game: PythonWeighingGame) {
+export function usePythonSearch(game: PythonWeighingPort) {
   const [report, setReport] = useState<PythonReport>({ status: 'idle' })
   const active = useRef<ActiveRun | null>(null)
   const runSequence = useRef(0)

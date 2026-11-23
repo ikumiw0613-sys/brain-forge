@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { PythonEditor } from '../../features/weight-search/PythonEditor'
-import type { PythonReport } from '../../features/weight-search/usePythonSearch'
+import type { PythonReport } from '../../factory/python/usePythonSearch'
 
 const minWidth = 30
 const maxWidth = 62

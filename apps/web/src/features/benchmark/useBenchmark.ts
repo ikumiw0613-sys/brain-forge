@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { assessSearchResult } from '../../factory/warehouse/engine'
-import { usePythonSearch } from '../weight-search/usePythonSearch'
+import { usePythonSearch } from '../../factory/python/usePythonSearch'
 import { benchmarkConditions, createBenchmark, getBenchmarkResult, measureBenchmark, produceBenchmarkPart } from './benchmarkEngine'
 
 type Trial = {

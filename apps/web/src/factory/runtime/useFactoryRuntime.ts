@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import type { ConveyorSpeed } from '../game/conveyor'
-import { defaultSupplySeed } from '../manufacturing/pythonSupply'
-import { useManufacturingLine } from '../manufacturing/useManufacturingLine'
-import { initialPythonCode } from '../weight-search/PythonEditor'
+import type { ConveyorSpeed } from '../../features/game/conveyor'
+import { defaultSupplySeed } from '../../features/manufacturing/pythonSupply'
+import { useManufacturingLine } from './useManufacturingLine'
+import { initialPythonCode } from '../warehouse/initialPythonCode'
 
 export function useFactoryRuntime() {
   const [speed, setSpeed] = useState<ConveyorSpeed>(1)

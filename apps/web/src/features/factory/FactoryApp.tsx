@@ -4,7 +4,7 @@ import { BenchmarkScreen } from '../benchmark/BenchmarkScreen'
 import { ManufacturingPrototype } from '../../game/manufacturing/ManufacturingPrototype'
 import { getManufacturingDashboard } from '../../factory/manufacturing/engine'
 import { WorldMap } from '../../game/world-map/WorldMap'
-import { useFactoryRuntime } from './useFactoryRuntime'
+import { useFactoryRuntime } from '../../factory/runtime/useFactoryRuntime'
 import { FactoryWarehouse } from '../../game/warehouse/FactoryWarehouse'
 
 const mapPath = `${import.meta.env.BASE_URL}map/`

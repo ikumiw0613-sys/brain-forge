@@ -1,11 +1,11 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
-import { getConveyorTickMs } from '../game/conveyor'
-import type { ConveyorSpeed } from '../game/conveyor'
-import { assessSearchResult, weightSearchReducer } from '../../factory/warehouse/engine'
-import type { Measurement } from '../../factory/warehouse/engine'
-import { usePythonSearch } from '../weight-search/usePythonSearch'
-import { createPythonSupply, deliverPythonPart, tickPythonSupply } from './pythonSupply'
-import type { PythonSupply } from './pythonSupply'
+import { getConveyorTickMs } from '../../features/game/conveyor'
+import type { ConveyorSpeed } from '../../features/game/conveyor'
+import { assessSearchResult, weightSearchReducer } from '../warehouse/engine'
+import type { Measurement } from '../warehouse/engine'
+import { usePythonSearch } from '../python/usePythonSearch'
+import { createPythonSupply, deliverPythonPart, tickPythonSupply } from '../../features/manufacturing/pythonSupply'
+import type { PythonSupply } from '../../features/manufacturing/pythonSupply'
 
 function clockPhase({ line, search }: PythonSupply) {
   if (!line.running) return 'idle'

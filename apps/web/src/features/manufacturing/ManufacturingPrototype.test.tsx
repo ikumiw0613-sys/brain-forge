@@ -4,9 +4,9 @@ import { EditorView } from '@codemirror/view'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { FactoryApp } from '../factory/FactoryApp'
-import type { PythonCommand, PythonEvent } from '../weight-search/pythonProtocol'
+import type { PythonCommand, PythonEvent } from '../../factory/python/pythonProtocol'
 import { createPythonSupply, defaultSupplySeed } from './pythonSupply'
-import { initialPythonCode } from '../weight-search/PythonEditor'
+import { initialPythonCode } from '../../factory/warehouse/initialPythonCode'
 
 let container: HTMLDivElement
 beforeEach(() => {

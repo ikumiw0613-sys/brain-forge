@@ -7,17 +7,7 @@ import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
 import { python } from '@codemirror/lang-python'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { indentationMarkers } from '@replit/codemirror-indentation-markers'
-import type { PythonReport } from './usePythonSearch'
-
-export const initialPythonCode = `async def search():
-    for i in range(n):
-        weight = await weigh(i)
-        if weight >= target:
-            return i
-    return n
-
-result = await search()
-`
+import type { PythonReport } from '../../factory/python/usePythonSearch'
 
 const statusText: Record<PythonReport['status'], string> = {
   idle: '実行待機',
