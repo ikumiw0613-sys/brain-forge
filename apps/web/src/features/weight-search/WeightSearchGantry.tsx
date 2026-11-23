@@ -1,7 +1,7 @@
 import { useId, useLayoutEffect, useRef } from 'react'
 import { Block, DispatchBay, DispatchHousing, DispatchShutter, FactoryFloor } from '../../renderers/ConveyorSceneArt'
 import { projectedPoints, projectedTranslate } from '../../renderers/conveyorProjection'
-import type { Measurement, WeightSearchView } from './engine'
+import type { Measurement, WeightSearchView } from '../../factory/warehouse/engine'
 import { armTravel, clawHeight, getRobotPose, shelfHeight, shelfPoint } from './robotMotion'
 import type { RobotMotion } from './robotMotion'
 import '../../renderers/conveyor.css'

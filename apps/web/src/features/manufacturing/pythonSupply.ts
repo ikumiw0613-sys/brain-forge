@@ -1,7 +1,7 @@
-import { advanceWeightSearchOrder, assessSearchResult, createWeightSearch, generateWeights, weightSearchReducer } from '../weight-search/engine'
+import { advanceWeightSearchOrder, assessSearchResult, createWeightSearch, generateWeights, weightSearchReducer } from '../../factory/warehouse/engine'
 import { createManufacturingState, tickManufacturing } from '../../factory/manufacturing/engine'
 import type { SupplyTicks } from '../../factory/manufacturing/engine'
-import type { Measurement } from '../weight-search/engine'
+import type { Measurement } from '../../factory/warehouse/engine'
 
 export const supplyWarehouseSize = 64
 export const defaultSupplySeed = 42

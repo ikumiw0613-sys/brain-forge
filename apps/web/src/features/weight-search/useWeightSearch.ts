@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getConveyorTickMs } from '../game/conveyor'
-import { assessSearchResult, createWeightSearch, defaultWeights, generateWeights, getWeightSearchView, weightSearchReducer } from './engine'
-import type { Measurement, WeightSearchAction } from './engine'
+import { assessSearchResult, createWeightSearch, defaultWeights, generateWeights, getWeightSearchView, weightSearchReducer } from '../../factory/warehouse/engine'
+import type { Measurement, WeightSearchAction } from '../../factory/warehouse/engine'
 import { dockIndex, retractMs, shipmentMs } from './robotMotion'
 import type { RobotMotion, WeighSpeed } from './robotMotion'
 

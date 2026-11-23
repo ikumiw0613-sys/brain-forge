@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import type { WeightSearchView } from './engine'
-import { powerPerWeigh, shippingReward, ticksPerWeigh, warehouseSizes } from './engine'
+import type { WeightSearchView } from '../../factory/warehouse/engine'
+import { powerPerWeigh, shippingReward, ticksPerWeigh, warehouseSizes } from '../../factory/warehouse/engine'
 import { initialPythonCode, PythonEditor } from './PythonEditor'
 import { weighSpeeds } from './robotMotion'
 import type { RobotMotion } from './robotMotion'

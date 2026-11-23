@@ -3,7 +3,7 @@ import { getLiftPose, liftCenter, rackEnd, warehouseShelfX, dockIndex } from './
 import type { RobotMotion } from './robotMotion'
 import { shelfAddress, warehouseLayout } from './warehouseLayout'
 import { Rock } from './WeightSearchGantry'
-import type { SearchBounds } from './engine'
+import type { SearchBounds } from '../../factory/warehouse/engine'
 
 export function StackedWarehouse({ size, parked, motion, bounds, pendingIndex }: {
   size: number

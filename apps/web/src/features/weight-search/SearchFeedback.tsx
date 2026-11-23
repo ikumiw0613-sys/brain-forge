@@ -1,5 +1,5 @@
-import { countPositions, powerPerWeigh, ticksPerWeigh } from './engine'
-import type { Measurement, SearchBounds, WeightSearchView } from './engine'
+import { countPositions, powerPerWeigh, ticksPerWeigh } from '../../factory/warehouse/engine'
+import type { Measurement, SearchBounds, WeightSearchView } from '../../factory/warehouse/engine'
 import { warehouseLayout } from './warehouseLayout'
 
 export const verdict = (result: Measurement) => result.qualifies ? '条件を満たす' : '必要重量未満'

@@ -1,7 +1,7 @@
 import { productRevenue } from '../../factory/manufacturing/engine'
 import { createPythonSupply, deliverPythonPart, tickPythonSupply } from '../manufacturing/pythonSupply'
 import type { PythonSupply } from '../manufacturing/pythonSupply'
-import { powerPerWeigh, weightSearchReducer } from '../weight-search/engine'
+import { powerPerWeigh, weightSearchReducer } from '../../factory/warehouse/engine'
 
 export const benchmarkConditions = { id: 'BF-256-2000-v1', seed: 42, warehouseSize: 256, ticks: 2000 } as const
 

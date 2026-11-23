@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { ManufacturingCodePanel } from '../manufacturing/ManufacturingCodePanel'
 import { StackedWarehouse } from '../weight-search/StackedWarehouse'
-import { getWeightSearchView } from '../weight-search/engine'
+import { getWeightSearchView } from '../../factory/warehouse/engine'
 import type { FactoryRuntime } from './useFactoryRuntime'
 
 export function FactoryWarehouse({ runtime }: { runtime: FactoryRuntime }) {
