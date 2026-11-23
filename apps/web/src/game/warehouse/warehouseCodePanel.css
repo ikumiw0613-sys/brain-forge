@@ -1,0 +1,38 @@
+.factory-warehouse .manufacturing-main { margin-block: 0; }
+.factory-warehouse .manufacturing-code-panel { background: #0d1927; }
+.warehouse-code-header { background: linear-gradient(105deg, #203b50, #132638); border-bottom: 1px solid #3b566b; }
+.warehouse-code-header h2 { margin: 0; color: #eff8fb; font-size: 1rem; }
+.warehouse-code-states {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 12px 16px 0 24px;
+}
+.warehouse-code-states > div { padding: 8px; border: 1px solid #2d4458; border-radius: 6px; background: #142437; }
+.warehouse-code-states dt, .warehouse-code-file span { color: #a6bacc; font-size: .72rem; }
+.warehouse-code-states dd { margin: 4px 0 0; font-size: .78rem; line-height: 1.45; }
+.warehouse-code-states dd[data-state="edited"], .warehouse-code-states dd[data-state="queued"] { color: #ffd6a1; }
+.warehouse-code-states dd[data-state="active"] { color: #a2e9db; }
+.warehouse-code-actions { flex-wrap: wrap; padding-block: 10px; }
+.warehouse-code-actions a { color: #a2e9db; text-underline-offset: 3px; }
+.warehouse-code-actions a:focus-visible { outline: 2px solid #a2e9db; outline-offset: 3px; }
+.warehouse-code-actions button:enabled { background: #94e2d5; border-color: #94e2d5; color: #102d31; font-weight: 700; }
+.warehouse-code-file { display: flex; align-items: center; gap: 10px; margin: 0 16px 0 24px; padding: 8px 10px; border: 1px solid #37526a; border-bottom: 0; border-left: 3px solid #78d5c7; border-radius: 6px 6px 0 0; background: #1a3045; }
+.warehouse-code-file code { color: #e8f4fa; font: 700 .88rem var(--mono); }
+.factory-warehouse .manufacturing-code-panel .weight-python { padding: 0 16px 12px 24px; }
+.factory-warehouse .manufacturing-code-panel .weight-python > .weight-subhead { padding-top: 8px; }
+.factory-warehouse .manufacturing-code-panel .weight-code-editor { min-width: 0; max-width: none; height: clamp(220px, 52dvh, 620px); }
+.warehouse-code-log, .warehouse-code-inspect { margin: 0; padding: 10px 16px 12px 24px; }
+.warehouse-code-log-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; color: #b7ccdc; font-size: .78rem; }
+.warehouse-code-log-heading h3 { margin: 0; color: #eaf4fb; font-size: .9rem; }
+.warehouse-code-log p { margin: 8px 0 0; color: #b7ccdc; font-size: .77rem; }
+.warehouse-code-log ul { display: grid; gap: 1px; margin: 8px 0 0; padding: 0; list-style: none; }
+.warehouse-code-log li { display: grid; grid-template-columns: minmax(48px, .7fr) minmax(56px, .8fr) minmax(0, 1fr); gap: 6px; padding: 5px 8px; background: #152639; color: #cfe0ec; font-size: .74rem; }
+.warehouse-code-log li strong { color: #a2e9db; font-variant-numeric: tabular-nums; }
+.warehouse-code-inspect { display: grid; gap: 7px; border-top: 1px solid #2d4458; color: #bed3e4; font-size: .77rem; }
+.warehouse-code-inspect summary { cursor: pointer; }
+.warehouse-code-inspect pre { max-height: 170px; margin: 7px 0 0; padding: 8px; overflow: auto; color: #e8f4fa; background: #0b1422; font: .76rem/1.5 var(--mono); }
+@media (max-width: 520px) {
+  .warehouse-code-states > div { padding: 6px; }
+}

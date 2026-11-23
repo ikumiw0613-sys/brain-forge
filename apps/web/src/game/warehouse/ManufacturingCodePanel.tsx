@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { PythonEditor } from '../../features/weight-search/PythonEditor'
 import type { PythonReport } from '../../factory/python/usePythonSearch'
+import type { Measurement } from '../../factory/warehouse/engine'
+import './warehouseCodePanel.css'
 
 const minWidth = 30
 const maxWidth = 62
 
-export function ManufacturingCodePanel({ open, onClose, draft, onChange, onApply, program, report, n, target }: {
+export function ManufacturingCodePanel({ open, onClose, draft, onChange, onApply, program, report, n, target,
+  orderId, measurements, running }: {
   open: boolean
   onClose: () => void
   draft: string
@@ -15,12 +18,20 @@ export function ManufacturingCodePanel({ open, onClose, draft, onChange, onApply
   report: PythonReport
   n: number
   target: number
+  orderId: string
+  measurements: readonly Measurement[]
+  running: boolean
 }) {
   const [width, setWidth] = useState(40)
   const closeButton = useRef<HTMLButtonElement>(null)
   const drag = useRef<{ pointer: number; startX: number; startWidth: number } | null>(null)
   const changeWidth = (value: number) => setWidth(Math.min(maxWidth, Math.max(minWidth, Math.round(value))))
   const dirty = draft !== (program.queued ?? program.active)
+  const queued = program.queued !== null
+  const latestMeasurements = open ? measurements.slice(-5).reverse() : []
+  const outcome = report.status === 'finished'
+    ? report.verified ? '探索成功' : '部品未確定'
+    : report.status === 'failed' ? '探索失敗' : null
 
   useEffect(() => {
     if (open) closeButton.current?.focus()
@@ -50,14 +61,37 @@ export function ManufacturingCodePanel({ open, onClose, draft, onChange, onApply
           event.preventDefault()
           changeWidth(next)
         }} />
-      <div className="manufacturing-code-toolbar">
-        <span role="status">{program.queued === null ? '適用済み' : '適用待ち · 次の注文から'}{dirty && ' / 未適用の編集あり'}</span>
+      <div className="manufacturing-code-toolbar warehouse-code-header">
+        <h2>Python制御盤</h2>
         <button type="button" ref={closeButton} onClick={onClose}>閉じる</button>
       </div>
-      <PythonEditor code={draft} report={report} n={n} target={target} busy={false} onChange={onChange} />
-      <div className="manufacturing-code-toolbar">
-        <p>適用したコードは、実行中の注文が完了してから有効になります。</p>
+      <dl className="warehouse-code-states" aria-label="コードの適用状態" aria-live="polite">
+        <div><dt>下書き</dt><dd data-state={dirty ? 'edited' : undefined}>{dirty ? '未適用の編集あり' : queued ? '予約コードと一致' : '適用コードと一致'}</dd></div>
+        <div><dt>次の注文</dt><dd data-state={queued ? 'queued' : undefined}>{queued ? '適用待ち' : '予約なし'}</dd></div>
+        <div><dt>稼働コード</dt><dd data-state="active">{running && report.status === 'running' ? '実行中' : '適用済み'}</dd></div>
+      </dl>
+      <div className="manufacturing-code-toolbar warehouse-code-actions">
+        <a href={`${import.meta.env.BASE_URL}map/?view=benchmark`}>性能試験へ</a>
         <button type="button" disabled={!dirty || !draft.trim()} onClick={onApply}>適用</button>
+      </div>
+      <div className="warehouse-code-file"><code>main.py</code><span>下書き</span></div>
+      <PythonEditor code={draft} report={report} n={n} target={target} busy={false} onChange={onChange} />
+      <section className="warehouse-code-log" aria-labelledby="warehouse-code-log-title">
+        <div className="warehouse-code-log-heading">
+          <h3 id="warehouse-code-log-title">計量ログ</h3><code>{orderId}</code>
+          {outcome && <span>{outcome}</span>}
+        </div>
+        {latestMeasurements.length > 0 ? <ul>
+          {latestMeasurements.map(({ index, weight, qualifies }, offset) => (
+            <li key={measurements.length - offset}>
+              <span>棚 {index}</span><strong>{weight} kg</strong><span>{qualifies ? '条件を満たす' : '必要重量未満'}</span>
+            </li>
+          ))}
+        </ul> : <p>この注文の計量結果はまだありません。</p>}
+      </section>
+      <div className="warehouse-code-inspect">
+        <details><summary>適用中のコードを表示</summary><pre>{program.active}</pre></details>
+        {program.queued !== null && <details><summary>予約コードを表示</summary><pre>{program.queued}</pre></details>}
       </div>
     </aside>
   )

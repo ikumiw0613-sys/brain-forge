@@ -6,6 +6,7 @@ import { getManufacturingDashboard } from '../../factory/manufacturing/engine'
 import { WorldMap } from '../../game/world-map/WorldMap'
 import { useFactoryRuntime } from '../../factory/runtime/useFactoryRuntime'
 import { FactoryWarehouse } from '../../game/warehouse/FactoryWarehouse'
+import { useWindowLayout } from '../../game/workspace/windowLayout'
 
 const mapPath = `${import.meta.env.BASE_URL}map/`
 const manufacturingPath = `${import.meta.env.BASE_URL}prototypes/manufacturing/`
@@ -21,8 +22,9 @@ const titles = { manufacturing: '製造ライン', warehouse: '部品倉庫', be
 
 export function FactoryApp() {
   const runtime = useFactoryRuntime()
+  const workspace = useWindowLayout()
   const [screen, setScreen] = useState(currentScreen)
-  const { line, search, lastDelivery } = runtime.line
+  const { line, search, lastDelivery, started } = runtime.line
   const dashboard = screen === 'map' ? getManufacturingDashboard(line) : undefined
 
   useEffect(() => {
@@ -46,6 +48,7 @@ export function FactoryApp() {
     if (url.origin !== window.location.origin || (url.pathname !== mapPath && url.pathname !== manufacturingPath)) return
 
     event.preventDefault()
+    if (url.href === window.location.href) return
     window.history.pushState(null, '', url)
     setScreen(currentScreen())
     window.scrollTo(0, 0)
@@ -56,8 +59,13 @@ export function FactoryApp() {
       {screen === 'manufacturing' ? <ManufacturingPrototype runtime={runtime} />
         : screen === 'warehouse' ? <FactoryWarehouse runtime={runtime} />
           : screen === 'benchmark' ? <BenchmarkScreen initialCode={runtime.draft} />
-          : <MapScreen measuring={search.pending !== null} running={line.running}
+          : <MapScreen measurementIndex={search.pending?.index ?? null} running={line.running}
+            workspace={workspace}
             machineStatus={line.status} progress={line.progress} delivery={lastDelivery}
+            started={started} elapsedTicks={line.tick} completed={line.completed} order={search.order}
+            editor={{ draft: runtime.draft, onChange: runtime.setDraft, onApply: () => runtime.line.applyCode(runtime.draft),
+              program: runtime.line.program, report: runtime.line.report, n: search.weights.length,
+              target: search.order.requiredWeight, measurements: search.log }}
             revenue={dashboard?.revenue} revenueRate={dashboard?.revenueRate} windowTicks={dashboard?.windowTicks} />}
     </div>
   )

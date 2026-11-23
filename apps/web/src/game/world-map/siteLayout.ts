@@ -8,7 +8,7 @@ const ports = {
   front: projectFactory([.95, 2.02]),
 }
 type Port = readonly [facility: FacilityKind, side: keyof typeof ports]
-type Connection = Readonly<{ from: Port; to: Port; via: readonly [Point, Point]; future?: boolean }>
+type Connection = Readonly<{ from: Port; to: Port; via: readonly [Point, Point]; kind: 'main' | 'analysis' | 'future' }>
 export type SiteLayout = Readonly<{
   width: number
   height: number
@@ -18,24 +18,26 @@ export type SiteLayout = Readonly<{
 }>
 
 export const wideSite: SiteLayout = {
-  width: 1056, height: 560, scale: 1,
-  positions: { warehouse: [140, 151], factory: [466, 155], shipping: [797, 151], sorting: [270, 366], logistics: [689, 370] },
+  width: 1090, height: 600, scale: 1,
+  positions: { warehouse: [153, 136], factory: [475, 152], shipping: [797, 168], analysis: [469, 396], sorting: [161, 390], logistics: [801, 401] },
   connections: [
-    { from: ['warehouse', 'east'], to: ['factory', 'west'], via: [[302, 280], [346, 220]] },
-    { from: ['factory', 'east'], to: ['shipping', 'west'], via: [[629, 284], [674, 217]] },
-    { from: ['warehouse', 'front'], to: ['sorting', 'west'], via: [[89, 338], [133, 405]], future: true },
-    { from: ['shipping', 'east'], to: ['logistics', 'east'], via: [[991, 294], [920, 416]], future: true },
+    { from: ['warehouse', 'east'], to: ['factory', 'west'], via: [[291, 260], [352, 195]], kind: 'main' },
+    { from: ['factory', 'east'], to: ['shipping', 'west'], via: [[616, 278], [678, 211]], kind: 'main' },
+    { from: ['factory', 'front'], to: ['analysis', 'west'], via: [[363, 313], [345, 426]], kind: 'analysis' },
+    { from: ['warehouse', 'front'], to: ['sorting', 'west'], via: [[81, 321], [48, 416]], kind: 'future' },
+    { from: ['shipping', 'east'], to: ['logistics', 'east'], via: [[1009, 311], [986, 460]], kind: 'future' },
   ],
 }
 
 export const narrowSite: SiteLayout = {
-  width: 370, height: 818, scale: .61,
-  positions: { warehouse: [119, 104], factory: [119, 288], shipping: [119, 472], sorting: [76, 690], logistics: [249, 690] },
+  width: 370, height: 1020, scale: .61,
+  positions: { warehouse: [119, 104], factory: [119, 288], shipping: [119, 472], analysis: [119, 686], sorting: [76, 879], logistics: [249, 879] },
   connections: [
-    { from: ['warehouse', 'east'], to: ['factory', 'east'], via: [[271, 196], [271, 319]] },
-    { from: ['factory', 'west'], to: ['shipping', 'west'], via: [[29, 333], [29, 492]] },
-    { from: ['shipping', 'front'], to: ['sorting', 'west'], via: [[46, 580], [24, 655]], future: true },
-    { from: ['shipping', 'east'], to: ['logistics', 'east'], via: [[311, 545], [338, 674]], future: true },
+    { from: ['warehouse', 'east'], to: ['factory', 'east'], via: [[258, 196], [258, 327]], kind: 'main' },
+    { from: ['factory', 'west'], to: ['shipping', 'west'], via: [[29, 333], [29, 492]], kind: 'main' },
+    { from: ['factory', 'east'], to: ['analysis', 'east'], via: [[281, 384], [269, 715]], kind: 'analysis' },
+    { from: ['shipping', 'front'], to: ['sorting', 'west'], via: [[32, 603], [24, 831]], kind: 'future' },
+    { from: ['shipping', 'east'], to: ['logistics', 'east'], via: [[346, 566], [346, 892]], kind: 'future' },
   ],
 }
 

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { ManufacturingCodePanel } from './ManufacturingCodePanel'
 import { StackedWarehouse } from '../../features/weight-search/StackedWarehouse'
-import { getWeightSearchView } from '../../factory/warehouse/engine'
+import { getWeightSearchView, warehouseSizes } from '../../factory/warehouse/engine'
 import type { FactoryRuntime } from '../../factory/runtime/useFactoryRuntime'
 
 export function FactoryWarehouse({ runtime }: { runtime: FactoryRuntime }) {
@@ -40,6 +40,11 @@ export function FactoryWarehouse({ runtime }: { runtime: FactoryRuntime }) {
               <p><a className="manufacturing-map-link" href={`${import.meta.env.BASE_URL}map/?view=benchmark`}>アルゴリズム性能試験</a></p>
               <p>製造ラインの稼働中は、Pythonで選んだ部品を確認し、自動で製造工場へ送ります。</p>
               <p>{delivery ? `直近の発送：${delivery.orderId} · 棚 ${delivery.index} · ${delivery.weight} kg` : 'まだ発送していません'}</p>
+              <label>部品数 n<select value={view.slots.length} disabled={line.started}
+                onChange={event => line.resizeWarehouse(Number(event.target.value))}>
+                {warehouseSizes.map(size => <option key={size} value={size}>{size.toLocaleString('ja-JP')} 個</option>)}
+              </select></label>
+              {line.started && <p>部品数を変えるには、製造工場でリセットしてください。</p>}
               <label>計量速度<select value={instant ? 'instant' : 'normal'} onChange={event => setInstant(event.target.value === 'instant')}>
                 <option value="normal">再生速度に合わせる</option><option value="instant">即時</option>
               </select></label>
@@ -61,7 +66,8 @@ export function FactoryWarehouse({ runtime }: { runtime: FactoryRuntime }) {
           setCodeOpen(false)
           editButton.current?.focus()
         }} draft={draft} onChange={setDraft} onApply={() => line.applyCode(draft)}
-          program={line.program} report={line.report} n={view.slots.length} target={view.order.requiredWeight} />
+          program={line.program} report={line.report} n={view.slots.length} target={view.order.requiredWeight}
+          orderId={view.order.id} measurements={view.log} running={line.line.running} />
       </div>
     </div>
   )

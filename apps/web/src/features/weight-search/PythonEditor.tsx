@@ -18,13 +18,14 @@ const statusText: Record<PythonReport['status'], string> = {
   finished: '実行完了',
 }
 
-export function PythonEditor({ code, report, n, target, canRun, busy, onChange, onRun, onStop }: {
+export function PythonEditor({ code, report, n, target, canRun, busy, compact = false, onChange, onRun, onStop }: {
   code: string
   report: PythonReport
   n: number
   target: number
   canRun?: boolean
   busy: boolean
+  compact?: boolean
   onChange: (code: string) => void
   onRun?: () => void
   onStop?: () => void
@@ -48,7 +49,7 @@ export function PythonEditor({ code, report, n, target, canRun, busy, onChange, 
           editable.current.of([EditorState.readOnly.of(busy), EditorView.editable.of(!busy)]),
           EditorView.contentAttributes.of({
             'aria-label': 'Pythonエディタ',
-            'aria-describedby': 'weight-python-inputs',
+            ...(compact ? {} : { 'aria-describedby': 'weight-python-inputs' }),
             spellcheck: 'false',
             autocapitalize: 'off',
           }),
@@ -77,19 +78,21 @@ export function PythonEditor({ code, report, n, target, canRun, busy, onChange, 
   }, [busy])
 
   return (
-    <section className="weight-python" aria-labelledby="python-title">
-      <div className="weight-subhead">
-        <h3 id="python-title">Pythonエディタ</h3>
-        <span className="weight-python-status" role="status" data-status={report.status}>{statusText[report.status]}</span>
-      </div>
-      <p id="weight-python-inputs"><code>n = {n}</code><code>target = {target}</code><span>計量の index は 0 始まり</span></p>
+    <section className="weight-python" aria-labelledby={compact ? undefined : 'python-title'}>
+      {!compact && <>
+        <div className="weight-subhead">
+          <h3 id="python-title">Pythonエディタ</h3>
+          <span className="weight-python-status" role="status" data-status={report.status}>{statusText[report.status]}</span>
+        </div>
+        <p id="weight-python-inputs"><code>n = {n}</code><code>target = {target}</code><span>計量の index は 0 始まり</span></p>
+      </>}
       <div ref={parent} className="weight-code-editor" />
       {onRun && onStop && <div className="weight-python-actions">
         <button type="button" className="weight-primary" disabled={!canRun || !code.trim()} onClick={onRun}>実行</button>
         <button type="button" className="weight-secondary" disabled={!busy} onClick={onStop}>停止</button>
       </div>}
-      {report.status === 'failed' && <pre className="weight-python-error" role="alert">{report.message}</pre>}
-      {report.status === 'finished' && (
+      {!compact && report.status === 'failed' && <pre className="weight-python-error" role="alert">{report.message}</pre>}
+      {report.status === 'finished' && (!compact || !report.verified) && (
         <div className="weight-python-result" aria-live="polite">
           <p><code>result = {report.index}</code>{report.index === n && <span>該当する鉱石なし</span>}</p>
           <p data-correct={report.correct}>{report.correct

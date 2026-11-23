@@ -1,7 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { getConveyorTickMs } from '../../features/game/conveyor'
 import type { ConveyorSpeed } from '../../features/game/conveyor'
-import { assessSearchResult, weightSearchReducer } from '../warehouse/engine'
+import { assessSearchResult, warehouseSizes, weightSearchReducer } from '../warehouse/engine'
 import type { Measurement } from '../warehouse/engine'
 import { usePythonSearch } from '../python/usePythonSearch'
 import { createPythonSupply, deliverPythonPart, tickPythonSupply } from '../../features/manufacturing/pythonSupply'
@@ -97,6 +97,12 @@ export function useManufacturingLine(speed: ConveyorSpeed, instant: boolean, see
 
   return {
     line, search, started, report: python.report, program, lastDelivery: model.lastDelivery,
+    resizeWarehouse(size: number) {
+      const state = current.current
+      if (started || state.line.running || size === state.search.weights.length ||
+        !warehouseSizes.some(option => option === size)) return
+      commit(createPythonSupply(state.line.supplyTicks, seed, size))
+    },
     applyCode(code: string) {
       if (!code.trim()) return
       setProgram(current => started
@@ -121,7 +127,8 @@ export function useManufacturingLine(speed: ConveyorSpeed, instant: boolean, see
       applyQueuedCode()
       reply.current = undefined
       startedOrder.current = null
-      commit(createPythonSupply(current.current.line.supplyTicks, seed))
+      const { line, search } = current.current
+      commit(createPythonSupply(line.supplyTicks, seed, search.weights.length))
       setStarted(false)
     },
   }

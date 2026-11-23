@@ -11,12 +11,12 @@ export function SiteConnections({ layout, delivery }: { layout: SiteLayout; deli
         const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI
         const path = points.map(point => point.join(',')).join(' ')
         return (
-          <g key={connection.to[0]} className={connection.future ? 'map-future-route' : 'map-main-route'}
+          <g key={connection.to[0]} className={`map-${connection.kind}-route`}
             data-from={connection.from[0]} data-to={connection.to[0]}>
             <polyline className="map-track-edge" points={path} />
             <polyline className="map-track-bed" points={path} />
             <polyline className="map-track-center" points={path} />
-            {!connection.future && <path className="map-direction" d="M-5-5 2 0-5 5 M3-5 10 0 3 5"
+            {connection.kind === 'main' && <path className="map-direction" d="M-5-5 2 0-5 5 M3-5 10 0 3 5"
               transform={`translate(${(x1 + x2) / 2} ${(y1 + y2) / 2}) rotate(${angle})`} />}
             {[points[0], points[points.length - 1]].map(([x, y]) => <circle key={`${x},${y}`} className="map-dock" cx={x} cy={y} r="4" />)}
             {delivery && connection.from[0] === 'warehouse' && connection.to[0] === 'factory' &&
