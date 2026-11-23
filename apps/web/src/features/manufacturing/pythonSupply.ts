@@ -1,6 +1,6 @@
 import { advanceWeightSearchOrder, assessSearchResult, createWeightSearch, generateWeights, weightSearchReducer } from '../weight-search/engine'
-import { createManufacturingState, tickManufacturing } from './engine'
-import type { SupplyTicks } from './engine'
+import { createManufacturingState, tickManufacturing } from '../../factory/manufacturing/engine'
+import type { SupplyTicks } from '../../factory/manufacturing/engine'
 import type { Measurement } from '../weight-search/engine'
 
 export const supplyWarehouseSize = 64

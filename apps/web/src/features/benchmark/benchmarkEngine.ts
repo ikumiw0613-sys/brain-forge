@@ -1,4 +1,4 @@
-import { productRevenue } from '../manufacturing/engine'
+import { productRevenue } from '../../factory/manufacturing/engine'
 import { createPythonSupply, deliverPythonPart, tickPythonSupply } from '../manufacturing/pythonSupply'
 import type { PythonSupply } from '../manufacturing/pythonSupply'
 import { powerPerWeigh, weightSearchReducer } from '../weight-search/engine'

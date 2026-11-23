@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { productionTicks, productRevenue } from '../manufacturing/engine'
+import { productionTicks, productRevenue } from '../../factory/manufacturing/engine'
 import { powerPerWeigh, ticksPerWeigh } from '../weight-search/engine'
 import { benchmarkConditions } from './benchmarkEngine'
 import { useBenchmark } from './useBenchmark'

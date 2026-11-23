@@ -1,6 +1,6 @@
 import { useId, useState, useSyncExternalStore } from 'react'
-import { dashboardWindowTicks, productionTicks } from '../manufacturing/engine'
-import type { MachineStatus } from '../manufacturing/engine'
+import { dashboardWindowTicks, productionTicks } from '../../factory/manufacturing/engine'
+import type { MachineStatus } from '../../factory/manufacturing/engine'
 import { FacilityBuilding } from './FacilityBuilding'
 import type { FacilityKind } from './FacilityBuilding'
 import { SiteConnections } from './SiteConnections'
