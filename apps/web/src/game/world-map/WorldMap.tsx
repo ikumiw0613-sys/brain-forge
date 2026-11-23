@@ -57,6 +57,7 @@ type MapActivity = {
   measurementIndex?: number | null
   running?: boolean
   started?: boolean
+  onToggleRunning?: () => void
   machineStatus?: MachineStatus
   progress?: number
   delivery?: MapDelivery | null
@@ -70,7 +71,7 @@ type MapActivity = {
   workspace?: WorkspaceLayout
 }
 
-export function WorldMap({ measurementIndex = null, running = false, started = false, machineStatus,
+export function WorldMap({ measurementIndex = null, running = false, started = false, onToggleRunning, machineStatus,
   progress = 0, delivery = null, revenue = 0, revenueRate = 0, windowTicks = 0, elapsedTicks, completed, order, editor, workspace }: MapActivity) {
   const narrow = useSyncExternalStore(subscribeToViewport, isNarrowViewport)
   const layout = narrow ? narrowSite : wideSite
@@ -128,12 +129,15 @@ export function WorldMap({ measurementIndex = null, running = false, started = f
     </div>
   )
   return (
-    <div className="world-map">
+    <div className="world-map" data-running={running}>
       <header className="map-header"><div className="map-shell">
         <span className="map-brand-mark" aria-hidden="true">◈</span><strong>Brain Forge</strong>
         <div className="map-header-status">
           {elapsedTicks !== undefined && <span>{elapsedTicks.toLocaleString('ja-JP')} Tick</span>}
-          <span className="map-live-status" data-running={running}>{running ? '稼働中' : started ? '一時停止中' : '停止中'}</span>
+          <span className="map-live-status" role="status" data-running={running}>{running ? '稼働中' : started ? '一時停止中' : '停止中'}</span>
+          {onToggleRunning && <button className="map-run-control" type="button" onClick={onToggleRunning}>
+            {running ? '一時停止' : started ? '再開' : '起動'}
+          </button>}
         </div>
       </div></header>
       <div className="map-shell map-workspace">

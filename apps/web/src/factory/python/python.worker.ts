@@ -41,10 +41,14 @@ del _bind_weigh, _request_weight
       send({ type: 'ready', runId })
       const value: unknown = await pyodide.runPythonAsync(code, { globals, filename: 'search.py', dedent: false })
       if (value instanceof pyodide.ffi.PyProxy) value.destroy()
-      if (!globals.has('result')) throw new Error('探索結果を result に代入してください。')
+      if (!globals.has('result')) {
+        send({ type: 'failed', runId, reason: 'invalid-result', message: '探索結果を result に代入してください。' })
+        return
+      }
       const index: unknown = pyodide.runPython('result if type(result) is int else None', { globals })
       if (typeof index !== 'number' || !Number.isInteger(index) || index < 0 || index > n) {
-        throw new Error(`result には 0〜${n} の整数を指定してください。`)
+        send({ type: 'failed', runId, reason: 'invalid-result', message: `result には 0〜${n} の整数を指定してください。` })
+        return
       }
       send({ type: 'finished', runId, index })
     } finally {

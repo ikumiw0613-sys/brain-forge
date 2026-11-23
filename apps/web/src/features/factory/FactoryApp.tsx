@@ -62,7 +62,7 @@ export function FactoryApp() {
           : <MapScreen measurementIndex={search.pending?.index ?? null} running={line.running}
             workspace={workspace}
             machineStatus={line.status} progress={line.progress} delivery={lastDelivery}
-            started={started} elapsedTicks={line.tick} completed={line.completed} order={search.order}
+            started={started} onToggleRunning={runtime.line.toggle} elapsedTicks={line.tick} completed={line.completed} order={search.order}
             editor={{ draft: runtime.draft, onChange: runtime.setDraft, onApply: () => runtime.line.applyCode(runtime.draft),
               program: runtime.line.program, report: runtime.line.report, n: search.weights.length,
               target: search.order.requiredWeight, measurements: search.log }}

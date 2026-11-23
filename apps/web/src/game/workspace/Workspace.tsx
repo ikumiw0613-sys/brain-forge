@@ -13,7 +13,7 @@ const subscribeToDesktop = (update: () => void) => {
 const isDesktop = () => window.matchMedia?.(desktopQuery).matches ?? true
 const frameId = (id: WindowId) => `workspace-${id}`
 
-export function Workspace({ layout: { windows, dispatch, tab, setTab }, panels, titleActions }: {
+export function Workspace({ layout: { windows, dispatch, tab, setTab, resetLayout, resetVersion }, panels, titleActions }: {
   layout: WorkspaceLayout
   panels: Record<WindowId, ReactNode>
   titleActions?: Partial<Record<WindowId, ReactNode>>
@@ -50,12 +50,13 @@ export function Workspace({ layout: { windows, dispatch, tab, setTab }, panels, 
             {workspaceWindows[id]}
           </button>
         ))}
+        {desktop && <button type="button" onClick={resetLayout}>配置を初期化</button>}
       </div>
       <div className="workspace-surface" ref={surface}>
         {windowIds.map(id => {
           const item = windows[id]
           const rect = windowRect(id, item, bounds)
-          return <WindowFrame key={id} id={id} desktop={desktop} rect={rect} bounds={bounds}
+          return <WindowFrame key={id} id={id} desktop={desktop} rect={rect} bounds={bounds} resetVersion={resetVersion}
             titleActions={titleActions?.[id]}
             open={desktop ? item.isOpen : tab === id}
             maximized={desktop && item.isMaximized} zIndex={item.zIndex}
@@ -75,7 +76,7 @@ export function Workspace({ layout: { windows, dispatch, tab, setTab }, panels, 
   )
 }
 
-type Gesture = { target: HTMLElement; pointer: number; x: number; y: number; rect: WindowRect }
+type Gesture = { target: HTMLElement; pointer: number; x: number; y: number; rect: WindowRect; preview?: WindowRect }
 type Mode = 'move' | ResizeDirection
 const resizeHandles = [
   ['n', '上端'], ['ne', '右上'], ['e', '右端'], ['se', '右下'],
@@ -89,24 +90,35 @@ function resizeOffset(position: number, start: number, viewportSize: number) {
   return position - start
 }
 
-function WindowFrame({ id, desktop, open, maximized, zIndex, rect, bounds, titleActions, onRaise, onClose, onMaximize, onRect, children }: {
+function WindowFrame({ id, desktop, open, maximized, zIndex, rect, bounds, resetVersion, titleActions, onRaise, onClose, onMaximize, onRect, children }: {
   id: WindowId; desktop: boolean; open: boolean; maximized: boolean; zIndex: number; rect: WindowRect; bounds: Bounds
+  resetVersion: number
   onRaise: () => void; onClose: () => void; onMaximize: () => void; onRect: (rect: WindowRect) => void; children: ReactNode
   titleActions?: ReactNode
 }) {
   const gesture = useRef<Gesture | null>(null)
+  const [preview, setPreview] = useState<WindowRect | null>(null)
   const title = workspaceWindows[id]
 
   useLayoutEffect(() => {
-    if (desktop && open && !maximized) return
     const active = gesture.current
-    if (active?.target.hasPointerCapture(active.pointer)) active.target.releasePointerCapture(active.pointer)
+    if (!active) return
     gesture.current = null
-  }, [desktop, open, maximized])
+    if (active.target.hasPointerCapture(active.pointer)) active.target.releasePointerCapture(active.pointer)
+    setPreview(null)
+  }, [desktop, open, maximized, resetVersion])
 
-  function change(mode: Mode, start: WindowRect, dx: number, dy: number) {
-    onRect(mode === 'move' ? fitWindow({ ...start, x: start.x + dx, y: start.y + dy }, bounds)
-      : resizeWindow(start, mode, dx, dy, bounds))
+  function finishGesture(pointer: number) {
+    const active = gesture.current
+    if (!active || active.pointer !== pointer) return
+    gesture.current = null
+    setPreview(null)
+    if (active.preview) onRect(fitWindow(active.preview, bounds))
+  }
+
+  function change(mode: Mode, start: WindowRect, dx: number, dy: number): WindowRect {
+    return mode === 'move' ? fitWindow({ ...start, x: start.x + dx, y: start.y + dy }, bounds)
+      : resizeWindow(start, mode, dx, dy, bounds)
   }
 
   function handle(mode: Mode) {
@@ -121,27 +133,29 @@ function WindowFrame({ id, desktop, open, maximized, zIndex, rect, bounds, title
         if (!active || active.pointer !== event.pointerId) return
         const dx = mode === 'move' ? event.clientX - active.x : resizeOffset(event.clientX, active.x, bounds.width)
         const dy = mode === 'move' ? event.clientY - active.y : resizeOffset(event.clientY, active.y, bounds.height)
-        change(mode, active.rect, dx, dy)
+        active.preview = change(mode, active.rect, dx, dy)
+        setPreview(active.preview)
       },
-      onLostPointerCapture(event: PointerEvent<HTMLButtonElement>) {
-        if (gesture.current?.pointer === event.pointerId) gesture.current = null
-      },
+      onPointerUp: (event: PointerEvent<HTMLButtonElement>) => finishGesture(event.pointerId),
+      onPointerCancel: (event: PointerEvent<HTMLButtonElement>) => finishGesture(event.pointerId),
+      onLostPointerCapture: (event: PointerEvent<HTMLButtonElement>) => finishGesture(event.pointerId),
       onKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
         const delta = {
           ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1],
         }[event.key]
-        if (!delta || maximized) return
+        if (!delta || maximized || gesture.current) return
         event.preventDefault()
         const step = event.shiftKey ? 48 : 16
-        change(mode, rect, delta[0] * step, delta[1] * step)
+        onRect(change(mode, rect, delta[0] * step, delta[1] * step))
       },
     }
   }
 
+  const visibleRect = preview && !maximized ? fitWindow(preview, bounds) : rect
   return (
     <section id={frameId(id)} className="workspace-window" aria-labelledby={`${frameId(id)}-title`}
       data-window={id} data-maximized={maximized} hidden={!open}
-      style={desktop && bounds.width ? { left: rect.x, top: rect.y, width: rect.width, height: rect.height, zIndex } : { zIndex }}
+      style={desktop && bounds.width ? { left: visibleRect.x, top: visibleRect.y, width: visibleRect.width, height: visibleRect.height, zIndex } : { zIndex }}
       onPointerDown={desktop ? onRaise : undefined}
       onFocus={desktop ? onRaise : undefined}
       onKeyDown={event => {

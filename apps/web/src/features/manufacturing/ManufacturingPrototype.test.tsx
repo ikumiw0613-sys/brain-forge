@@ -142,6 +142,97 @@ function metric(label: string) {
   return Array.from(container.querySelectorAll('dt')).find(item => item.textContent === label)?.nextElementSibling?.textContent
 }
 
+it('starts from the map and holds late measurements, delivery and production across pause and navigation', async () => {
+  TestWorker.instances = []
+  vi.stubGlobal('Worker', TestWorker)
+  window.history.replaceState(null, '', '/map/')
+  const root = createRoot(container)
+  const control = () => container.querySelector<HTMLButtonElement>('.map-run-control')!
+  const toggle = () => act(async () => control().click())
+  const tick = () => container.querySelector('.map-header-status > span')?.textContent
+  const progress = () => container.querySelector('.map-progress')?.getAttribute('data-progress')
+  try {
+    await act(async () => root.render(<StrictMode><FactoryApp /></StrictMode>))
+    expect(control().textContent).toBe('起動')
+    expect(tick()).toBe('0 Tick')
+    expect(TestWorker.instances).toHaveLength(0)
+    await navigate('[data-facility="warehouse"] a')
+    await act(async () => {
+      const speed = Array.from(container.querySelectorAll('select')).find(select => select.closest('label')?.textContent?.startsWith('計量速度'))!
+      speed.value = 'instant'
+      speed.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    await navigate('.factory-warehouse a[href="/map/"]')
+    await toggle()
+    expect(control().textContent).toBe('一時停止')
+    const worker = TestWorker.instances[0]
+    const { runId } = worker.run
+    await toggle()
+    expect(control().textContent).toBe('再開')
+    await worker.emit({ type: 'ready', runId })
+    const request = { type: 'weigh', runId, requestId: 1, index: 0 } as const
+    await worker.emit(request)
+    await worker.emit(request)
+    await advance(20_000)
+    expect(tick()).toBe('0 Tick')
+    expect(container.querySelector('[data-weighing]')).toBeNull()
+    expect(worker.commands).toHaveLength(1)
+    expect(worker.terminate).not.toHaveBeenCalled()
+
+    const editor = EditorView.findFromDOM(container.querySelector('#workspace-python .cm-editor')!)!
+    const draft = `# 休止中に編集\n${initialPythonCode}`
+    await act(async () => editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: draft } }))
+    await act(async () => container.querySelector<HTMLButtonElement>('.map-editor-apply')!.click())
+    expect(container.querySelector('.map-editor-queued')?.textContent).toBe('予約中')
+    expect(worker.run.code).toBe(initialPythonCode)
+
+    await toggle()
+    await advance(1)
+    expect(tick()).toBe('1 Tick')
+    await toggle()
+    await advance(20_000)
+    expect(tick()).toBe('1 Tick')
+    expect(worker.commands).toHaveLength(1)
+    await act(async () => { control().click(); control().click(); control().click() })
+    await advance(1)
+    expect(tick()).toBe('2 Tick')
+    expect(worker.commands.filter(command => command.type === 'weighed')).toHaveLength(1)
+    expect(TestWorker.instances).toHaveLength(1)
+
+    const count = await runSearch(worker, true, toggle)
+    expect(container.querySelector('.map-cargo')).toBeNull()
+    const waiting = (count + 1) * 2
+    expect(tick()).toBe(`${waiting} Tick`)
+    await advance(5000)
+    expect(progress()).toBe('0')
+    await toggle()
+    const cargo = container.querySelector('.map-cargo')
+    expect(cargo?.getAttribute('data-delivery')).toBe('ORD-001')
+    await advance(3500)
+    expect(progress()).toBe('7')
+    await toggle()
+    expect(container.querySelector('.map-cargo')).toBe(cargo)
+    expect(container.querySelector('.world-map')?.getAttribute('data-running')).toBe('false')
+    await navigate('[data-facility="factory"] a')
+    await advance(5000)
+    expect(metric('経過時間')).toBe(`${waiting + 7} Tick`)
+    expect(metric('売上')).toBe('0 クレジット')
+    await navigate('.manufacturing-map-link')
+    expect(control().textContent).toBe('再開')
+    expect(progress()).toBe('7')
+    await toggle()
+    await advance(6500)
+    expect(progress()).toBe('20')
+    expect(container.querySelectorAll('.map-revenue dd')[1]?.textContent).toBe('100 Cr')
+    await advance(500)
+    expect(TestWorker.instances).toHaveLength(2)
+    expect(TestWorker.instances[1].run.code).toBe(draft)
+    expect(container.querySelectorAll('.map-revenue dd')[1]?.textContent).toBe('100 Cr')
+  } finally {
+    await act(async () => root.unmount())
+  }
+}, 20_000)
+
 async function runSearch(worker: TestWorker, binary: boolean, beforeDelivery?: () => Promise<void>) {
   const { runId, n, target } = worker.run
   const requestOffset = worker.commands.filter(command => command.type === 'weighed').length
@@ -150,7 +241,9 @@ async function runSearch(worker: TestWorker, binary: boolean, beforeDelivery?: (
     const requestId = requestOffset + ++count
     const repliesBefore = worker.commands.length
     await worker.emit({ type: 'weigh', runId, requestId, index })
-    expect(metric('計量中の index')).toBe(String(index))
+    const map = container.querySelector('.world-map')
+    if (map) expect(map.querySelector('[data-weighing] .map-facility-activity')?.textContent).toBe(`棚 ${index} · 計量中`)
+    else expect(metric('計量中の index')).toBe(String(index))
     await advance(1)
     expect(worker.commands).toHaveLength(repliesBefore)
     await advance(1)

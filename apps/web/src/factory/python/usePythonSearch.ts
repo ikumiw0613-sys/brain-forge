@@ -6,8 +6,10 @@ export const pythonLimits = { loadingMs: 45_000, executionMs: 1_800_000, idleMs:
 
 export type PythonReport =
   | { status: 'idle' | 'loading' | 'running' | 'stopped' }
-  | { status: 'failed'; message: string }
+  | { status: 'failed'; message: string; reason?: 'invalid-result' | 'timeout' }
   | ({ status: 'finished'; index: number } & ReturnType<PythonWeighingPort['assess']>)
+
+type WeighRequest = Extract<PythonEvent, { type: 'weigh' }>
 
 type ActiveRun = {
   id: number
@@ -20,6 +22,7 @@ type ActiveRun = {
   lastRequest: number
   measurements: number
   weighing: boolean
+  deferredMeasurement?: WeighRequest
   pausedAt?: number
 }
 
@@ -54,6 +57,7 @@ export function usePythonSearch(game: PythonWeighingPort) {
   function timeOut(run: ActiveRun) {
     finish(run, {
       status: 'failed',
+      reason: 'timeout',
       message: run.loading ? 'Pyodideの読み込みがタイムアウトしました。' : 'Pythonの実行がタイムアウトしました。',
     })
   }
@@ -84,7 +88,8 @@ export function usePythonSearch(game: PythonWeighingPort) {
     }
   }
 
-  function requestMeasurement(run: ActiveRun, { index, requestId }: Extract<PythonEvent, { type: 'weigh' }>) {
+  function requestMeasurement(run: ActiveRun, request: WeighRequest) {
+    const { index, requestId } = request
     if (!Number.isSafeInteger(requestId) || requestId <= run.lastRequest) return
     run.lastRequest = requestId
     const reject = (message: string) => send(run, { type: 'weighError', runId: run.id, requestId, message })
@@ -92,7 +97,7 @@ export function usePythonSearch(game: PythonWeighingPort) {
       reject(`weigh(index) には 0〜${run.n - 1} の整数を指定してください。`)
       return
     }
-    if (run.weighing) {
+    if (run.weighing || run.deferredMeasurement) {
       reject('計量機は動作中です。前の weigh() を await してから呼び出してください。')
       return
     }
@@ -100,6 +105,15 @@ export function usePythonSearch(game: PythonWeighingPort) {
       reject(`1回の実行で計量できる上限は ${pythonLimits.measurements} 回です。`)
       return
     }
+    if (measurementPaused.current) {
+      run.deferredMeasurement = request
+      updateMeasurementTimer(run)
+      return
+    }
+    startMeasurement(run, request)
+  }
+
+  function startMeasurement(run: ActiveRun, { index, requestId }: WeighRequest) {
     run.weighing = true
     const accepted = game.weigh(index, ({ weight }) => {
       if (active.current !== run) return
@@ -113,7 +127,7 @@ export function usePythonSearch(game: PythonWeighingPort) {
     })
     if (!accepted) {
       run.weighing = false
-      reject('現在の注文で計量を開始できませんでした。')
+      send(run, { type: 'weighError', runId: run.id, requestId, message: '現在の注文で計量を開始できませんでした。' })
       return
     }
     run.measurements++
@@ -151,7 +165,7 @@ export function usePythonSearch(game: PythonWeighingPort) {
         return
       }
       if (data.type === 'failed') {
-        finish(run, { status: 'failed', message: data.message })
+        finish(run, { status: 'failed', message: data.message, reason: data.reason })
       } else if (data.type === 'ready' && run.loading) {
         run.loading = false
         run.deadline = performance.now() + pythonLimits.executionMs
@@ -161,10 +175,10 @@ export function usePythonSearch(game: PythonWeighingPort) {
         requestMeasurement(run, data)
       } else if (data.type === 'finished' && !run.loading) {
         const { index } = data
-        if (run.weighing) {
+        if (run.weighing || run.deferredMeasurement) {
           finish(run, { status: 'failed', message: '計量の完了を await してから結果を返してください。' })
         } else if (!Number.isInteger(index) || index < 0 || index > run.n) {
-          finish(run, { status: 'failed', message: `result には 0〜${run.n} の整数を指定してください。` })
+          finish(run, { status: 'failed', reason: 'invalid-result', message: `result には 0〜${run.n} の整数を指定してください。` })
         } else {
           finish(run, { status: 'finished', index, ...game.assess(index) })
         }
@@ -188,8 +202,16 @@ export function usePythonSearch(game: PythonWeighingPort) {
     },
     clearReport() { setReport({ status: 'idle' }) },
     setMeasurementPaused(paused: boolean) {
+      if (measurementPaused.current === paused) return
       measurementPaused.current = paused
-      if (active.current?.weighing) updateMeasurementTimer(active.current)
+      const run = active.current
+      if (!run || (!run.weighing && !run.deferredMeasurement)) return
+      updateMeasurementTimer(run)
+      if (!paused && run.deferredMeasurement) {
+        const request = run.deferredMeasurement
+        run.deferredMeasurement = undefined
+        startMeasurement(run, request)
+      }
     },
   }
 }

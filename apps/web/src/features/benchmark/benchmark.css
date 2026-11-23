@@ -1,6 +1,13 @@
 .benchmark-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
 .benchmark-controls { display: grid; gap: 10px; padding: 16px 18px; color: #b5c6d5; font-size: .85rem; }
 .benchmark-controls p { margin: 0; }
+.benchmark-options { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0; padding: 8px; border: 1px solid #31485d; }
+.benchmark-input-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.benchmark-input-row input { flex: 1; min-width: 10ch; }
+.benchmark-controls input:not([type="checkbox"]), .benchmark-controls select {
+  border: 1px solid #526c80; border-radius: 6px; padding: 7px; background: #0b1422; color: #eef4f8;
+}
+.benchmark-controls progress { width: 100%; accent-color: #69cbd0; }
 .benchmark-controls .manufacturing-buttons { padding: 0; max-width: 340px; }
 .benchmark-controls textarea {
   width: 100%;
@@ -20,6 +27,16 @@
 .benchmark-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 6px 0 0; }
 .benchmark-metrics > div { padding: 9px; border: 1px solid #31485d; border-radius: 8px; }
 .benchmark-metrics dd { margin: 5px 0 0; color: #eef4f8; font: 700 1rem Consolas, monospace; overflow-wrap: anywhere; }
+.benchmark-results { display: grid; gap: 16px; margin-top: 16px; }
+.benchmark-results h2 { margin: 0; color: #eef4f8; font-size: 1.05rem; }
+.benchmark-table-scroll { overflow-x: auto; }
+.benchmark-table-scroll table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.benchmark-table-scroll :is(td, th) { padding: 8px; border-bottom: 1px solid #31485d; text-align: left; white-space: nowrap; }
+.benchmark-table-scroll th { color: #eef4f8; }
+.benchmark-table-scroll details p { width: max-content; max-width: 32ch; white-space: pre-wrap; overflow-wrap: anywhere; }
+.benchmark-bars { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.benchmark-bars li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(40px, 3fr) auto; gap: 8px; align-items: center; }
+.benchmark-bars meter { width: 100%; }
 @media (max-width: 750px) {
   .benchmark-layout { grid-template-columns: minmax(0, 1fr); }
 }

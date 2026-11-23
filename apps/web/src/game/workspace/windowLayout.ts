@@ -1,4 +1,5 @@
-import { useReducer, useState } from 'react'
+import { useLayoutEffect, useReducer, useRef, useState } from 'react'
+import { clearWindowLayout, loadWindowLayout, saveWindowLayout } from './windowLayoutStorage'
 
 export const workspaceWindows = {
   python: 'warehouse.py',
@@ -69,13 +70,14 @@ export function windowRect(id: WindowId, state: WindowState, bounds: Bounds): Wi
   return fitWindow(state.rect ?? defaultRect(id, bounds), bounds)
 }
 
-type WindowAction = { id: WindowId } & (
+type WindowAction = { type: 'reset' } | ({ id: WindowId } & (
   { type: 'open' | 'close' | 'raise' }
   | { type: 'maximize'; restoreRect: WindowRect }
   | { type: 'rect'; rect: WindowRect }
-)
+))
 
 function updateWindow(layout: WindowLayout, action: WindowAction): WindowLayout {
+  if (action.type === 'reset') return initialLayout
   const { id } = action
   const current = layout[id]
   const top = Math.max(...windowIds.map(key => layout[key].zIndex))
@@ -94,9 +96,23 @@ function updateWindow(layout: WindowLayout, action: WindowAction): WindowLayout 
 }
 
 export function useWindowLayout() {
-  const [windows, dispatch] = useReducer(updateWindow, initialLayout)
+  const [windows, dispatch] = useReducer(updateWindow, initialLayout, fallback => loadWindowLayout(windowIds) ?? fallback)
   const [tab, setTab] = useState<WindowId | null>('python')
-  return { windows, dispatch, tab, setTab }
+  const [resetVersion, setResetVersion] = useState(0)
+  const previous = useRef(windows)
+  useLayoutEffect(() => {
+    if (previous.current !== windows && windows !== initialLayout) saveWindowLayout(windows)
+    previous.current = windows
+  }, [windows])
+
+  function resetLayout() {
+    clearWindowLayout()
+    dispatch({ type: 'reset' })
+    setTab('python')
+    setResetVersion(version => version + 1)
+  }
+
+  return { windows, dispatch, tab, setTab, resetLayout, resetVersion }
 }
 
 export type WorkspaceLayout = ReturnType<typeof useWindowLayout>

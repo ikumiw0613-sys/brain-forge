@@ -10,4 +10,4 @@ export type PythonEvent =
   | (Run & { type: 'ready' })
   | (Request & { type: 'weigh'; index: number })
   | (Run & { type: 'finished'; index: number })
-  | (Run & { type: 'failed'; message: string })
+  | (Run & { type: 'failed'; message: string; reason?: 'invalid-result' })

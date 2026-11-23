@@ -41,7 +41,7 @@ export function useManufacturingLine(speed: ConveyorSpeed, instant: boolean, see
     assess: index => assessSearchResult(current.current.search, index),
     weigh(index, onComplete) {
       const state = current.current
-      if (state.line.status !== 'WAITING') return false
+      if (!state.line.running || state.line.status !== 'WAITING') return false
       const next = weightSearchReducer(state.search, { type: 'weigh', index })
       if (next === state.search) return false
       reply.current = onComplete
@@ -117,9 +117,9 @@ export function useManufacturingLine(speed: ConveyorSpeed, instant: boolean, see
         startedOrder.current = null
         python.clearReport()
       }
-      python.setMeasurementPaused(!running)
       setStarted(true)
       commit({ ...state, line: { ...state.line, running } })
+      python.setMeasurementPaused(!running)
     },
     reset() {
       python.stop()
