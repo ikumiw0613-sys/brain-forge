@@ -1,6 +1,7 @@
 import { advanceWeightSearchOrder, assessSearchResult, createWeightSearch, generateWeights, weightSearchReducer } from '../weight-search/engine'
 import { createManufacturingState, tickManufacturing } from './engine'
 import type { SupplyTicks } from './engine'
+import type { Measurement } from '../weight-search/engine'
 
 export const supplyWarehouseSize = 64
 export const defaultSupplySeed = 42
@@ -15,7 +16,12 @@ function sample(seed: number, position: number) {
 export function createPythonSupply(supplyTicks: SupplyTicks, seed: number) {
   let position = 0
   const weights = generateWeights(supplyWarehouseSize, () => sample(seed, ++position))
-  return { line: createManufacturingState(supplyTicks), search: createWeightSearch(weights, sample(seed, ++position)), seed }
+  return {
+    line: createManufacturingState(supplyTicks),
+    search: createWeightSearch(weights, sample(seed, ++position)),
+    seed,
+    lastDelivery: null as (Measurement & { orderId: string }) | null,
+  }
 }
 
 export type PythonSupply = ReturnType<typeof createPythonSupply>
@@ -37,5 +43,11 @@ export function tickPythonSupply(state: PythonSupply): PythonSupply {
 export function deliverPythonPart(state: PythonSupply, index: number): PythonSupply {
   if (!state.line.running || state.line.status !== 'WAITING' || state.search.pending ||
     !assessSearchResult(state.search, index).verified) return state
-  return { ...state, line: { ...state.line, status: 'RECEIVED' } }
+  const part = state.search.log.find(entry => entry.index === index)
+  if (!part) return state
+  return {
+    ...state,
+    line: { ...state.line, status: 'RECEIVED' },
+    lastDelivery: { index: part.index, weight: part.weight, qualifies: part.qualifies, orderId: state.search.order.id },
+  }
 }

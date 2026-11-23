@@ -4,22 +4,17 @@ import type { ConveyorSpeed } from '../game/conveyor'
 import { assessSearchResult, weightSearchReducer } from '../weight-search/engine'
 import type { Measurement } from '../weight-search/engine'
 import { usePythonSearch } from '../weight-search/usePythonSearch'
-import { tickManufacturing } from './engine'
-import type { SupplyTicks } from './engine'
 import { createPythonSupply, deliverPythonPart, tickPythonSupply } from './pythonSupply'
 import type { PythonSupply } from './pythonSupply'
 
-export type SupplyMode = 'preset' | 'python'
-
-function clockPhase(mode: SupplyMode, { line, search }: PythonSupply) {
+function clockPhase({ line, search }: PythonSupply) {
   if (!line.running) return 'idle'
-  if (mode === 'preset') return 'preset'
   if (line.status === 'COMPLETED') return 'request'
   if (line.status !== 'WAITING') return 'production'
   return search.pending ? 'weigh' : 'idle'
 }
 
-export function useManufacturingLine(mode: SupplyMode, speed: ConveyorSpeed, instant: boolean, seed: number, initialCode: string) {
+export function useManufacturingLine(speed: ConveyorSpeed, instant: boolean, seed: number, initialCode: string) {
   const [model, setModel] = useState(() => createPythonSupply(16, seed))
   const current = useRef(model)
   const reply = useRef<((measurement: Measurement) => void) | undefined>(undefined)
@@ -63,10 +58,8 @@ export function useManufacturingLine(mode: SupplyMode, speed: ConveyorSpeed, ins
 
   const advance = useEffectEvent((phase: ReturnType<typeof clockPhase>) => {
     const state = current.current
-    if (clockPhase(mode, state) !== phase) return
-    const next = mode === 'python'
-      ? tickPythonSupply(state)
-      : { ...state, line: tickManufacturing(state.line) }
+    if (clockPhase(state) !== phase) return
+    const next = tickPythonSupply(state)
     if (next === state) return
     if (next.search.order.number !== state.search.order.number) applyQueuedCode()
     commit(next)
@@ -77,7 +70,7 @@ export function useManufacturingLine(mode: SupplyMode, speed: ConveyorSpeed, ins
     }
   })
 
-  const phase = clockPhase(mode, model)
+  const phase = clockPhase(model)
   const delay = phase === 'weigh' && instant ? 1 : getConveyorTickMs(speed)
   useEffect(() => {
     if (phase === 'idle') return
@@ -87,7 +80,7 @@ export function useManufacturingLine(mode: SupplyMode, speed: ConveyorSpeed, ins
 
   const syncOrder = useEffectEvent(() => {
     const state = current.current
-    if (mode !== 'python' || !state.line.running || state.line.status !== 'WAITING') return
+    if (!state.line.running || state.line.status !== 'WAITING') return
     if (startedOrder.current !== state.search.order.number) {
       if (state.search.pending) return
       startedOrder.current = state.search.order.number
@@ -100,10 +93,10 @@ export function useManufacturingLine(mode: SupplyMode, speed: ConveyorSpeed, ins
 
   useEffect(() => {
     syncOrder()
-  }, [mode, line.running, line.status, search.order.number, search.pending, python.report])
+  }, [line.running, line.status, search.order.number, search.pending, python.report])
 
   return {
-    line, search, started, report: python.report, program,
+    line, search, started, report: python.report, program, lastDelivery: model.lastDelivery,
     applyCode(code: string) {
       if (!code.trim()) return
       setProgram(current => started
@@ -113,7 +106,7 @@ export function useManufacturingLine(mode: SupplyMode, speed: ConveyorSpeed, ins
     toggle() {
       const state = current.current
       const running = !state.line.running
-      if (running && mode === 'python' && !python.busy &&
+      if (running && !python.busy &&
         (python.report.status === 'failed' || (python.report.status === 'finished' && !python.report.verified))) {
         startedOrder.current = null
         python.clearReport()
@@ -121,10 +114,6 @@ export function useManufacturingLine(mode: SupplyMode, speed: ConveyorSpeed, ins
       python.setMeasurementPaused(!running)
       setStarted(true)
       commit({ ...state, line: { ...state.line, running } })
-    },
-    setSupplyTicks(supplyTicks: SupplyTicks) {
-      const state = current.current
-      commit({ ...state, line: { ...state.line, supplyTicks } })
     },
     reset() {
       python.stop()

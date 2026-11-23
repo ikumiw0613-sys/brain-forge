@@ -37,10 +37,10 @@ const structures = {
 
 export type FacilityKind = keyof typeof structures
 
-export function FacilityBuilding({ kind }: { kind: FacilityKind }) {
+export function FacilityBuilding({ kind, lamp }: { kind: FacilityKind; lamp?: 'weighing' | 'producing' }) {
   const { boxes, doors } = structures[kind]
   return (
-    <svg className="map-building" viewBox="-111 -98 310 226" aria-hidden="true">
+    <g className="map-building" aria-hidden="true">
       <Structure box={[0, 0, 2.05, 2.02, 9, -9]} />
       <polygon className="map-platform-edge" points={projectedPoints([.06, .07, 1], [1.99, .07, 1], [1.99, 1.95, 1], [.06, 1.95, 1])} />
       {boxes.map((box, index) => <Structure key={index} box={box} accent={index > (kind === 'factory' ? 2 : 0)} />)}
@@ -51,6 +51,10 @@ export function FacilityBuilding({ kind }: { kind: FacilityKind }) {
         </g>
       ))}
       <path className="map-route-mark" d={`M${projectedPoints([.21, 1.86])}L${projectedPoints([1.77, 1.86])}`} />
-    </svg>
+      {lamp && <g transform={projectedTranslate(lamp === 'weighing' ? [1.7, .42, 63] : [1.55, .68, 50])}>
+        <circle className="map-activity-lamp" data-activity={lamp} r="8" />
+        <circle className="map-activity-core" r="3.5" />
+      </g>}
+    </g>
   )
 }

@@ -1,10 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ManufacturingPrototype } from './ManufacturingPrototype'
+import { FactoryApp } from './FactoryApp'
 
 function mount() {
   const root = createRoot(document.getElementById('root')!)
-  root.render(<StrictMode><ManufacturingPrototype /></StrictMode>)
+  root.render(<StrictMode><FactoryApp /></StrictMode>)
   window.addEventListener('pagehide', () => root.unmount(), { once: true })
 }
 

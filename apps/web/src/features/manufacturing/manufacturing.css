@@ -108,6 +108,10 @@ button:focus-visible, select:focus-visible { outline: 2px solid #aaf6ef; outline
     top: var(--top-bar-height);
     max-height: calc(100dvh - var(--top-bar-height));
   }
+  .factory-warehouse .manufacturing-code-panel {
+    top: var(--header-height);
+    max-height: calc(100dvh - var(--header-height));
+  }
 }
 @media (max-width: 850px) {
   .manufacturing { --dashboard-row: 56px; --dashboard-height: calc(2 * var(--dashboard-row) + 43px); }
@@ -115,6 +119,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid #aaf6ef; outline
   .manufacturing-dashboard dl { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: var(--dashboard-row); }
   .manufacturing-code-panel { position: fixed; inset: 0 0 0 auto; min-width: min(92vw, 560px); box-shadow: -12px 0 32px #0008; }
   .manufacturing-code-panel { top: var(--dashboard-height); }
+  .factory-warehouse .manufacturing-code-panel { top: 0; }
   .manufacturing-code-resize { display: none; }
   .manufacturing-layout { grid-template-columns: 1fr; }
   .manufacturing-stats dl { grid-template-columns: repeat(3, minmax(0, 1fr)); }
