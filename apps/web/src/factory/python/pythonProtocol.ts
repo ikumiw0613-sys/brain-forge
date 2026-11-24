@@ -1,6 +1,8 @@
 type Run = { runId: number }
 type Request = Run & { requestId: number }
 
+export type PythonPrepareCommand = { type: 'prepare' }
+
 export type PythonCommand =
   | (Run & { type: 'run'; code: string; n: number; target: number })
   | (Request & { type: 'weighed'; weight: number })

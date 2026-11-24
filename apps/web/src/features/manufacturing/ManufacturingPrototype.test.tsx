@@ -4,7 +4,7 @@ import { EditorView } from '@codemirror/view'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { FactoryApp } from '../factory/FactoryApp'
-import type { PythonCommand, PythonEvent } from '../../factory/python/pythonProtocol'
+import type { PythonCommand, PythonEvent, PythonPrepareCommand } from '../../factory/python/pythonProtocol'
 import { createPythonSupply, defaultSupplySeed } from './pythonSupply'
 import { initialPythonCode } from '../../factory/warehouse/initialPythonCode'
 
@@ -109,11 +109,11 @@ it.each([[1, 500], [2, 250]])('updates map revenue at %i× and retains it across
 class TestWorker {
   static instances: TestWorker[] = []
   onmessage: ((event: MessageEvent<PythonEvent>) => void) | null = null
-  commands: PythonCommand[] = []
+  commands: (PythonCommand | PythonPrepareCommand)[] = []
   terminate = vi.fn()
   constructor() { TestWorker.instances.push(this) }
-  postMessage(command: PythonCommand) { this.commands.push(command) }
-  get run() { return this.commands[0] as Extract<PythonCommand, { type: 'run' }> }
+  postMessage(command: PythonCommand | PythonPrepareCommand) { this.commands.push(command) }
+  get run() { return this.commands.find(command => command.type === 'run')! }
   emit(event: PythonEvent) { return act(async () => this.onmessage?.(new MessageEvent('message', { data: event }))) }
 }
 
@@ -342,13 +342,13 @@ it('snapshots benchmark code and isolates trial failure and cancellation from th
   expect(first.terminate).toHaveBeenCalledOnce()
   expect(metric('確定売上')).toBe('100 Cr')
   expect(metric('計測Tick')).toBe(`${requestId * 2 + 20} Tick`)
-  const second = TestWorker.instances[2]
+  const second = TestWorker.instances.find(worker => worker !== first && worker.run?.code === queued)!
   expect(second.run.code).toBe(queued)
   const stale = second.onmessage!
   await click('中断')
   expect(second.terminate).toHaveBeenCalledOnce()
   await click('試験開始')
-  const retry = TestWorker.instances[3]
+  const retry = TestWorker.instances.find(worker => worker.run?.code === edit)!
   expect(retry.run.code).toBe(edit)
   await act(async () => stale(new MessageEvent('message', { data: { type: 'failed', runId: second.run.runId, message: 'stale' } })))
   expect(container.querySelector('.benchmark [role="alert"]')).toBeNull()

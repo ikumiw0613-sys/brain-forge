@@ -1,4 +1,5 @@
 import type { BenchmarkConditions, getBenchmarkResult } from './benchmarkEngine'
+import { benchmarkDistributionLabel } from './benchmarkDistributions'
 
 export type BenchmarkJob = { variant: 'A' | 'B'; code: string; conditions: BenchmarkConditions }
 export type BenchmarkIssue = 'wrong' | 'unverified' | 'invalid-result' | 'exception' | 'timeout'
@@ -46,4 +47,28 @@ export function summarize(values: readonly (number | null)[]) {
     min: Math.min(...measured),
     max: Math.max(...measured),
   }
+}
+
+export function summarizeBenchmarkGroups(cases: readonly CaseResult[]) {
+  const groups = new Map<string, CaseResult[]>()
+  for (const entry of cases) {
+    const { variant, conditions } = entry.job
+    const label = `${benchmarkDistributionLabel(conditions.distribution)} · ${conditions.warehouseSize}部品 · ${conditions.ticks} Tick · ${variant}`
+    const group = groups.get(label) ?? []
+    group.push(entry)
+    groups.set(label, group)
+  }
+  return Array.from(groups, ([label, group]) => {
+    const completed = group.filter(entry => entry.status === 'completed')
+    const evaluated = group.filter(entry => entry.status !== 'stopped')
+    return {
+      label,
+      done: completed.length,
+      total: group.length,
+      efficiency: summarize(completed.map(entry => entry.result.revenueRate))?.average ?? null,
+      measurements: summarize(completed.map(entry => entry.result.measurements))?.average ?? null,
+      accuracy: summarize(evaluated.map(entry => correctness(entry.tally)))?.average ?? null,
+      values: evaluated.map(metricValues),
+    }
+  })
 }

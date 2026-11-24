@@ -1,23 +1,28 @@
 /// <reference lib="webworker" />
-import type { PythonCommand, PythonEvent } from './pythonProtocol'
+import type { PythonCommand, PythonEvent, PythonPrepareCommand } from './pythonProtocol'
 
 const worker = self as unknown as DedicatedWorkerGlobalScope
 const send = (event: PythonEvent) => worker.postMessage(event)
 const waiting = new Map<number, { resolve: (weight: number) => void; reject: (error: Error) => void }>()
 let runId: number | undefined
 let requestId = 0
+let prepared: ReturnType<typeof loadPython> | undefined
+
+async function loadPython() {
+  const directory = new URL(`${import.meta.env.BASE_URL}pyodide/`, worker.location.origin)
+  const moduleUrl = new URL('pyodide.mjs', directory).href
+  const { loadPyodide }: typeof import('pyodide') = await import(/* @vite-ignore */ moduleUrl)
+  return loadPyodide({
+    indexURL: directory.href,
+    jsglobals: Object.create(null),
+    stdout: () => {},
+    stderr: () => {},
+  })
+}
 
 async function execute({ code, n, target, runId }: Extract<PythonCommand, { type: 'run' }>) {
   try {
-    const directory = new URL(`${import.meta.env.BASE_URL}pyodide/`, worker.location.origin)
-    const moduleUrl = new URL('pyodide.mjs', directory).href
-    const { loadPyodide }: typeof import('pyodide') = await import(/* @vite-ignore */ moduleUrl)
-    const pyodide = await loadPyodide({
-      indexURL: directory.href,
-      jsglobals: Object.create(null),
-      stdout: () => {},
-      stderr: () => {},
-    })
+    const pyodide = await (prepared ?? loadPython())
     function requestWeight(index: number) {
       return new Promise<number>((resolve, reject) => {
         const id = ++requestId
@@ -60,7 +65,14 @@ del _bind_weigh, _request_weight
   }
 }
 
-worker.onmessage = ({ data }: MessageEvent<PythonCommand>) => {
+worker.onmessage = ({ data }: MessageEvent<PythonCommand | PythonPrepareCommand>) => {
+  if (data.type === 'prepare') {
+    if (runId !== undefined || prepared) return
+    prepared = loadPython()
+    // A run may arrive after initialization fails. Report the failure when it starts.
+    void prepared.catch(() => {})
+    return
+  }
   if (data.type === 'run') {
     if (runId !== undefined) return
     runId = data.runId

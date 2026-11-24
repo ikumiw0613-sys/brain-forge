@@ -2,20 +2,28 @@ import { productRevenue } from '../../factory/manufacturing/engine'
 import { createPythonSupply, deliverPythonPart, tickPythonSupply } from '../manufacturing/pythonSupply'
 import type { PythonSupply } from '../manufacturing/pythonSupply'
 import { powerPerWeigh, weightSearchReducer } from '../../factory/warehouse/engine'
+import { defaultBenchmarkDistribution, generateBenchmarkWeights } from './benchmarkDistributions'
+import type { BenchmarkDistribution } from './benchmarkDistributions'
 
 export const benchmarkConditions = { id: 'BF-256-2000-v1', seed: 42, warehouseSize: 256, ticks: 2000 } as const
 export const benchmarkTicks = [1000, 2000, 5000] as const
 export const benchmarkSeeds = [42, 123, 456, 789, 2026] as const
-export type BenchmarkConditions = { seed: number; warehouseSize: number; ticks: number }
+export type BenchmarkConditions = { seed: number; warehouseSize: number; ticks: number; distribution?: BenchmarkDistribution }
 
-export function benchmarkId({ seed, warehouseSize, ticks }: BenchmarkConditions) {
+export function benchmarkId({ seed, warehouseSize, ticks, distribution = defaultBenchmarkDistribution }: BenchmarkConditions) {
   const base = `BF-${warehouseSize}-${ticks}`
-  return seed === benchmarkConditions.seed ? `${base}-v1` : `${base}-seed${seed}-v1`
+  const seedSuffix = seed === benchmarkConditions.seed ? '' : `-seed${seed}`
+  const distributionSuffix = distribution === 'legacy' ? '' : `-${distribution}`
+  return `${base}${seedSuffix}${distributionSuffix}-v1`
 }
 
-export function createBenchmark(seed: number = benchmarkConditions.seed, warehouseSize: number = benchmarkConditions.warehouseSize): PythonSupply {
-  // The supply engine indexes order samples by order number, independent of measurement calls.
-  const state = createPythonSupply(16, seed, warehouseSize)
+export function createBenchmark(
+  seed: number = benchmarkConditions.seed,
+  warehouseSize: number = benchmarkConditions.warehouseSize,
+  distribution: BenchmarkDistribution = defaultBenchmarkDistribution,
+): PythonSupply {
+  const weights = generateBenchmarkWeights(seed, warehouseSize, distribution)
+  const state = createPythonSupply(16, seed, weights)
   return { ...state, line: { ...state.line, running: true } }
 }
 

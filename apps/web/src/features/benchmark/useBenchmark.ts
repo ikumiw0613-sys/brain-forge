@@ -1,9 +1,12 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { assessSearchResult } from '../../factory/warehouse/engine'
-import { usePythonSearch } from '../../factory/python/usePythonSearch'
+import { createPythonWorker, usePythonSearch } from '../../factory/python/usePythonSearch'
 import { createBenchmark, getBenchmarkResult, measureBenchmark, produceBenchmarkPart } from './benchmarkEngine'
 import { emptyTally } from './benchmarkStats'
 import type { BenchmarkJob, BenchmarkTally, CaseResult } from './benchmarkStats'
+import { closeBenchmarkWorkers, prepareBenchmarkWorkers } from './benchmarkWorkerPool'
+
+const progressIntervalMs = 100
 
 type Batch = {
   jobs: readonly BenchmarkJob[]
@@ -15,16 +18,27 @@ type Batch = {
 }
 
 function startCase(job: BenchmarkJob) {
-  return { model: createBenchmark(job.conditions.seed, job.conditions.warehouseSize), tally: emptyTally }
+  const { seed, warehouseSize, distribution } = job.conditions
+  return { model: createBenchmark(seed, warehouseSize, distribution), tally: emptyTally }
 }
 
 export function useBenchmark() {
   const current = useRef<Batch | null>(null)
+  const pool = useRef<Worker[]>([])
+  const lastPublish = useRef(0)
   const [displayed, setDisplayed] = useState<Batch | null>(null)
+
+  useEffect(() => {
+    const workers = pool.current
+    return () => closeBenchmarkWorkers(workers)
+  }, [])
 
   function commit(batch: Batch, publish = true) {
     current.current = batch
-    if (publish) setDisplayed(batch)
+    if (publish) {
+      lastPublish.current = performance.now()
+      setDisplayed(batch)
+    }
   }
 
   const python = usePythonSearch({
@@ -44,7 +58,7 @@ export function useBenchmark() {
       const model = measureBenchmark(batch.model, index, limit)
       if (model === batch.model) return false
       const capped = model.line.tick === limit
-      const publish = capped || Math.floor(model.line.tick / 32) !== Math.floor(batch.model.line.tick / 32)
+      const publish = capped || performance.now() - lastPublish.current >= progressIntervalMs
       commit({ ...batch, model }, publish)
       // The effect closes the Worker at the cap, including a measurement cut short by the last Tick.
       if (!capped) onComplete?.(model.search.log.at(-1)!)
@@ -52,7 +66,13 @@ export function useBenchmark() {
     },
     cancelWeigh() {},
     flushMeasurements() {},
-  })
+  }, () => pool.current.shift() ?? createPythonWorker())
+
+  function startOrder(code: string) {
+    python.start(code)
+    // Prepare fresh interpreters in parallel without running user code ahead of its order.
+    prepareBenchmarkWorkers(pool.current, navigator.hardwareConcurrency >= 4 ? 2 : 1)
+  }
 
   function closeCase(batch: Batch, status: CaseResult['status'], issue?: CaseResult['issue']) {
     const job = batch.jobs[batch.index]
@@ -60,13 +80,14 @@ export function useBenchmark() {
     const results = [...batch.results, { job, status, tally, result: getBenchmarkResult(batch.model), issue }]
     const index = batch.index + 1
     if (status === 'stopped' || index === batch.jobs.length) {
+      closeBenchmarkWorkers(pool.current)
       commit({ ...batch, results, tally, status: status === 'stopped' || results.every(entry => entry.status === 'completed') ? status : 'failed' })
       return
     }
 
     const next = batch.jobs[index]
     commit({ ...batch, index, results, ...startCase(next) })
-    python.start(next.code)
+    startOrder(next.code)
   }
 
   const handleResult = useEffectEvent(() => {
@@ -95,7 +116,7 @@ export function useBenchmark() {
         closeCase({ ...batch, model, tally }, 'completed')
       } else {
         commit({ ...batch, model, tally })
-        python.start(code)
+        startOrder(code)
       }
     }
   })
@@ -115,7 +136,7 @@ export function useBenchmark() {
     start(jobs: readonly BenchmarkJob[]) {
       if (!jobs.length || jobs.some(job => !job.code.trim()) || current.current?.status === 'running') return
       commit({ jobs, index: 0, results: [], status: 'running', ...startCase(jobs[0]) })
-      python.start(jobs[0].code)
+      startOrder(jobs[0].code)
     },
     stop() {
       const batch = current.current

@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { productionTicks, productRevenue } from '../../factory/manufacturing/engine'
 import { powerPerWeigh, ticksPerWeigh, warehouseSizes } from '../../factory/warehouse/engine'
 import { benchmarkConditions, benchmarkId, benchmarkSeeds, benchmarkTicks } from './benchmarkEngine'
+import { benchmarkDistributionLabel, benchmarkDistributions, defaultBenchmarkDistribution } from './benchmarkDistributions'
+import type { BenchmarkDistribution } from './benchmarkDistributions'
+import { BenchmarkHistogram } from './BenchmarkHistogram'
 import { BenchmarkResults, formatBenchmarkNumber } from './BenchmarkResults'
 import { useBenchmark } from './useBenchmark'
 import './benchmark.css'
@@ -34,6 +37,7 @@ export function BenchmarkScreen({ initialCode }: { initialCode: string }) {
   const [codeB, setCodeB] = useState(binaryExample)
   const [compare, setCompare] = useState(false)
   const [sizes, setSizes] = useState<number[]>([benchmarkConditions.warehouseSize])
+  const [distributions, setDistributions] = useState<BenchmarkDistribution[]>([defaultBenchmarkDistribution])
   const [seedText, setSeedText] = useState(String(benchmarkConditions.seed))
   const [ticks, setTicks] = useState<number>(benchmarkConditions.ticks)
   const benchmark = useBenchmark()
@@ -41,14 +45,14 @@ export function BenchmarkScreen({ initialCode }: { initialCode: string }) {
   const running = status === 'running'
   const seeds = readSeeds(seedText)
   const codes = compare ? [{ variant: 'A', code }, { variant: 'B', code: codeB }] as const : [{ variant: 'A', code }] as const
-  const caseCount = sizes.length * seeds.length * codes.length
+  const caseCount = sizes.length * seeds.length * distributions.length * codes.length
   const edited = job && job.code !== (job.variant === 'A' ? code : codeB)
   const error = results.length === benchmark.caseCount && benchmark.caseCount === 1 ? results[0].issue?.detail : undefined
 
   function start() {
-    const jobs = sizes.flatMap(warehouseSize => seeds.flatMap(seed => codes.map(entry => ({
-      ...entry, conditions: { warehouseSize, seed, ticks },
-    }))))
+    const jobs = sizes.flatMap(warehouseSize => seeds.flatMap(seed => distributions.flatMap(distribution =>
+      codes.map(entry => ({ ...entry, conditions: { warehouseSize, seed, ticks, distribution } })),
+    )))
     benchmark.start(jobs)
   }
   return (
@@ -70,6 +74,14 @@ export function BenchmarkScreen({ initialCode }: { initialCode: string }) {
                   <input type="checkbox" checked={sizes.includes(size)}
                     onChange={event => setSizes(event.target.checked ? [...sizes, size].sort((a, b) => a - b) : sizes.filter(item => item !== size))} />
                   {format(size)} 部品
+                </label>)}
+              </fieldset>
+              <fieldset className="benchmark-options" disabled={running}>
+                <legend>重量分布</legend>
+                {benchmarkDistributions.map(({ id, label }) => <label key={id}>
+                  <input type="checkbox" checked={distributions.includes(id)}
+                    onChange={event => setDistributions(event.target.checked ? [...distributions, id] : distributions.filter(item => item !== id))} />
+                  {label}
                 </label>)}
               </fieldset>
               <label htmlFor="benchmark-seeds">seed（複数の場合はカンマ区切り）</label>
@@ -106,7 +118,7 @@ export function BenchmarkScreen({ initialCode }: { initialCode: string }) {
               {job ? <>
                 <p>ケース {benchmark.caseNumber} / {benchmark.caseCount} · コード {job.variant}</p>
                 <p><strong>{benchmarkId(job.conditions)}</strong> · seed {job.conditions.seed}</p>
-                <p>{job.conditions.warehouseSize} 部品 · {format(job.conditions.ticks)} Tick</p>
+                <p>{benchmarkDistributionLabel(job.conditions.distribution)} · {format(job.conditions.warehouseSize)} 部品 · {format(job.conditions.ticks)} Tick</p>
                 <progress aria-label="現在のケースの計測Tick" value={result?.ticks ?? 0} max={job.conditions.ticks} />
               </> : <p>選択した条件で試験を開始してください。</p>}
               <p>計量 {ticksPerWeigh} Tick・{powerPerWeigh} pt / 回 · 製造 {productionTicks} Tick・{productRevenue} Cr / 個</p>
@@ -122,6 +134,7 @@ export function BenchmarkScreen({ initialCode }: { initialCode: string }) {
             </div>
           </section>
         </div>
+        <BenchmarkHistogram sizes={sizes} seeds={seeds} distributions={distributions} running={running} />
         {results.length > 0 && <BenchmarkResults cases={results} />}
       </main>
     </div>

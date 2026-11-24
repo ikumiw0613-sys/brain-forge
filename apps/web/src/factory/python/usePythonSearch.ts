@@ -34,7 +34,11 @@ function dispose(run: ActiveRun) {
   run.worker.terminate()
 }
 
-export function usePythonSearch(game: PythonWeighingPort) {
+export function createPythonWorker() {
+  return new Worker(new URL('./python.worker.ts', import.meta.url), { type: 'module' })
+}
+
+export function usePythonSearch(game: PythonWeighingPort, createWorker = createPythonWorker) {
   const [report, setReport] = useState<PythonReport>({ status: 'idle' })
   const active = useRef<ActiveRun | null>(null)
   const runSequence = useRef(0)
@@ -138,7 +142,7 @@ export function usePythonSearch(game: PythonWeighingPort) {
     if (active.current) return
     let worker: Worker
     try {
-      worker = new Worker(new URL('./python.worker.ts', import.meta.url), { type: 'module' })
+      worker = createWorker()
     } catch {
       setReport({ status: 'failed', message: 'Python Workerを起動できませんでした。' })
       return

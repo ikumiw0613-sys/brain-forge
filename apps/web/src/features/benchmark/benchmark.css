@@ -34,9 +34,17 @@
 .benchmark-table-scroll :is(td, th) { padding: 8px; border-bottom: 1px solid #31485d; text-align: left; white-space: nowrap; }
 .benchmark-table-scroll th { color: #eef4f8; }
 .benchmark-table-scroll details p { width: max-content; max-width: 32ch; white-space: pre-wrap; overflow-wrap: anywhere; }
-.benchmark-bars { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
-.benchmark-bars li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(40px, 3fr) auto; gap: 8px; align-items: center; }
-.benchmark-bars meter { width: 100%; }
+.benchmark-efficiency-meter { display: block; width: 100%; }
+.benchmark-histograms { margin-top: 16px; }
+.benchmark-histograms h2 { margin: 0; color: #eef4f8; font-size: 1.05rem; }
+.benchmark-preview-settings { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.benchmark-histogram-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 12px; }
+.benchmark-histogram-grid figure { margin: 0; padding: 12px; border: 1px solid #31485d; border-radius: 8px; }
+.benchmark-histogram-grid strong { color: #eef4f8; }
+.benchmark-histogram-plot { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; height: 88px; margin-top: 8px; border-bottom: 1px solid #b5c6d5; }
+.benchmark-histogram-plot > span { display: flex; align-items: end; min-width: 0; }
+.benchmark-histogram-plot > span > span { width: 100%; background: #69cbd0; }
+.benchmark-histogram-axis { display: flex; justify-content: space-between; margin: 3px 0 8px; font-variant-numeric: tabular-nums; }
 @media (max-width: 750px) {
   .benchmark-layout { grid-template-columns: minmax(0, 1fr); }
 }

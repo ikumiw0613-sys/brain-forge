@@ -6,19 +6,25 @@ import type { Measurement } from '../../factory/warehouse/engine'
 export const supplyWarehouseSize = 64
 export const defaultSupplySeed = 42
 
-function sample(seed: number, position: number) {
+export function supplySample(seed: number, position: number) {
   let value = (seed + Math.imul(position, 0x9e3779b9)) | 0
   value = Math.imul(value ^ (value >>> 16), 0x21f0aaad)
   value = Math.imul(value ^ (value >>> 15), 0x735a2d97)
   return ((value ^ (value >>> 15)) >>> 0) / 2 ** 32
 }
 
-export function createPythonSupply(supplyTicks: SupplyTicks, seed: number, size = supplyWarehouseSize) {
+export function generateSupplyWeights(seed: number, size: number) {
   let position = 0
-  const weights = generateWeights(size, () => sample(seed, ++position))
+  return generateWeights(size, () => supplySample(seed, ++position))
+}
+
+export function createPythonSupply(supplyTicks: SupplyTicks, seed: number, sizeOrWeights: number | readonly number[] = supplyWarehouseSize) {
+  const generate = typeof sizeOrWeights === 'number'
+  const weights = generate ? generateSupplyWeights(seed, sizeOrWeights) : sizeOrWeights
   return {
     line: createManufacturingState(supplyTicks),
-    search: createWeightSearch(weights, sample(seed, ++position)),
+    // Order samples are indexed by order number, independently of warehouse generation and weighing.
+    search: createWeightSearch(weights, supplySample(seed, weights.length + 1), { allowDuplicates: !generate }),
     seed,
     lastDelivery: null as (Measurement & { orderId: string }) | null,
   }
@@ -33,7 +39,7 @@ export function tickPythonSupply(state: PythonSupply): PythonSupply {
     return {
       ...state,
       line: { ...line, status: 'WAITING', waiting: 0, progress: 0 },
-      search: advanceWeightSearchOrder(search, sample(seed, search.weights.length + search.order.number + 1)),
+      search: advanceWeightSearchOrder(search, supplySample(seed, search.weights.length + search.order.number + 1)),
     }
   }
   if (line.status === 'WAITING' && !search.pending) return state

@@ -60,18 +60,20 @@ export type WeightSearchAction =
   | { type: 'nextOrder'; sample: number }
   | { type: 'resize'; weights: readonly number[]; sample: number }
 
-export function createWarehouse(weights: readonly number[]): readonly number[] {
-  if (!warehouseSizes.some(size => size === weights.length) || [...weights].some(weight => !Number.isSafeInteger(weight) || weight <= 0) ||
-    new Set(weights).size !== weights.length) {
-    throw new RangeError('The warehouse needs a supported number of distinct positive integer weights.')
+export function createWarehouse(weights: readonly number[], { allowDuplicates = false } = {}): readonly number[] {
+  const warehouse = [...weights]
+  if (!warehouseSizes.some(size => size === warehouse.length) || warehouse.some(weight => !Number.isSafeInteger(weight) || weight <= 0) ||
+    (!allowDuplicates && new Set(warehouse).size !== warehouse.length)) {
+    const weightType = allowDuplicates ? 'positive' : 'distinct positive'
+    throw new RangeError(`The warehouse needs a supported number of ${weightType} integer weights.`)
   }
-  return [...weights].sort((left, right) => left - right)
+  return warehouse.sort((left, right) => left - right)
 }
 
 export function generateOrder(min: number, max: number, sample: number, previous?: Order): Order {
   if (!(sample >= 0 && sample < 1)) throw new RangeError('The random sample must be in [0, 1).')
   const number = (previous?.number ?? 0) + 1
-  const excludePrevious = previous !== undefined && previous.requiredWeight >= min && previous.requiredWeight <= max
+  const excludePrevious = min < max && previous !== undefined && previous.requiredWeight >= min && previous.requiredWeight <= max
   let requiredWeight = min + Math.floor(sample * (max - min + (excludePrevious ? 0 : 1)))
   // Sample the integer range with the previous threshold removed.
   if (excludePrevious && requiredWeight >= previous.requiredWeight) requiredWeight++
@@ -97,8 +99,8 @@ export function advanceWeightSearchOrder(state: State, sample: number): State {
   return { ...state, ...beginOrder(state.weights, sample, state.order) }
 }
 
-export function createWeightSearch(weights: readonly number[], sample: number): State {
-  const warehouse = createWarehouse(weights)
+export function createWeightSearch(weights: readonly number[], sample: number, options?: { allowDuplicates?: boolean }): State {
+  const warehouse = createWarehouse(weights, options)
   return { weights: warehouse, ...beginOrder(warehouse, sample), history: [], totalPower: 0 }
 }
 
