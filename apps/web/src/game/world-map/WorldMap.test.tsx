@@ -18,7 +18,7 @@ it('renders the production and support facilities and exposes only available one
     expect(container.querySelector('h1')?.textContent).toBe('工場拠点マップ')
     const nav = Array.from(container.querySelectorAll('.map-nav a'))
     expect(nav.map(link => link.getAttribute('href'))).toEqual([
-      '/map/', '/map/?view=warehouse', '/prototypes/manufacturing/', '/map/?view=benchmark',
+      '/map/', '/map/?view=warehouse', '/prototypes/manufacturing/', '/map/?view=benchmark', '/map/?view=sorting',
     ])
     expect(nav[0].getAttribute('aria-current')).toBe('page')
     expect(container.querySelector('.map-live-status')?.textContent).toBe('一時停止中')
@@ -33,13 +33,13 @@ it('renders the production and support facilities and exposes only available one
       '部品倉庫', '製造工場', '出荷センター', '分析室', '仕分け施設', '物流センター',
     ])
     expect(facilities.map(item => item.querySelector('.map-facility-status')?.textContent?.slice(2))).toEqual([
-      '利用可能', '利用可能', '準備中', '利用可能', '未解放', '未解放',
+      '利用可能', '利用可能', '準備中', '利用可能', '利用可能', '未解放',
     ])
     expect(facilities.every(item => item.querySelector('.map-building'))).toBe(true)
     expect(container.querySelectorAll('svg.map-site')).toHaveLength(1)
     const links = Array.from(scene.querySelectorAll<SVGAElement>('a'))
     expect(links.map(link => link.getAttribute('href'))).toEqual([
-      '/map/?view=warehouse', '/prototypes/manufacturing/', '/map/?view=benchmark',
+      '/map/?view=warehouse', '/prototypes/manufacturing/', '/map/?view=benchmark', '/map/?view=sorting',
     ])
     for (const link of links) {
       link.focus()

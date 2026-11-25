@@ -1,7 +1,7 @@
 import type { WindowId, WindowLayout, WindowState } from './windowLayout'
 
 const storageKey = 'brain-forge:workspace-layout'
-const version = 1
+const version = 2
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -25,20 +25,21 @@ function readWindow(value: unknown): WindowState | null {
   return { rect: { x, y, width, height }, zIndex, isOpen, isMaximized }
 }
 
-export function loadWindowLayout(ids: readonly WindowId[]): WindowLayout | null {
+export function loadWindowLayout(defaults: WindowLayout): WindowLayout | null {
   try {
     const saved = window.localStorage.getItem(storageKey)
     if (saved === null) return null
     const data: unknown = JSON.parse(saved)
-    if (!isRecord(data) || data.version !== version || !isRecord(data.windows)) return null
+    if (!isRecord(data) || (data.version !== 1 && data.version !== version) || !isRecord(data.windows)) return null
 
-    const windows: Partial<WindowLayout> = {}
-    for (const id of ids) {
+    const windows = { ...defaults }
+    for (const id of Object.keys(defaults) as WindowId[]) {
+      if (id === 'sorting' && !(id in data.windows)) continue
       const state = readWindow(data.windows[id])
       if (!state) return null
       windows[id] = state
     }
-    return windows as WindowLayout
+    return windows
   } catch {
     return null
   }

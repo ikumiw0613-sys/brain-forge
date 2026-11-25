@@ -1,12 +1,4 @@
-import { useEffect, useRef } from 'react'
-import { Compartment, EditorState } from '@codemirror/state'
-import { EditorView, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers } from '@codemirror/view'
-import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
-import { bracketMatching, indentOnInput, indentUnit } from '@codemirror/language'
-import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete'
-import { python } from '@codemirror/lang-python'
-import { oneDark } from '@codemirror/theme-one-dark'
-import { indentationMarkers } from '@replit/codemirror-indentation-markers'
+import { PythonCodeEditor } from '../../factory/python/PythonCodeEditor'
 import type { PythonReport } from '../../factory/python/usePythonSearch'
 
 const statusText: Record<PythonReport['status'], string> = {
@@ -18,7 +10,7 @@ const statusText: Record<PythonReport['status'], string> = {
   finished: '実行完了',
 }
 
-export function PythonEditor({ code, report, n, target, canRun, busy, compact = false, onChange, onRun, onStop }: {
+export function PythonEditor({ code, report, n, target, canRun, busy, compact = false, label = 'Pythonエディタ', onChange, onRun, onStop }: {
   code: string
   report: PythonReport
   n: number
@@ -26,57 +18,11 @@ export function PythonEditor({ code, report, n, target, canRun, busy, compact = 
   canRun?: boolean
   busy: boolean
   compact?: boolean
+  label?: string
   onChange: (code: string) => void
   onRun?: () => void
   onStop?: () => void
 }) {
-  const parent = useRef<HTMLDivElement>(null)
-  const editor = useRef<EditorView | null>(null)
-  const changeHandler = useRef(onChange)
-  const editable = useRef(new Compartment())
-  changeHandler.current = onChange
-
-  useEffect(() => {
-    const view = new EditorView({
-      parent: parent.current!,
-      state: EditorState.create({
-        doc: code,
-        extensions: [
-          lineNumbers(), highlightActiveLine(), highlightActiveLineGutter(), history(),
-          python(), oneDark, indentUnit.of('    '), EditorState.tabSize.of(4), indentationMarkers(),
-          indentOnInput(), bracketMatching(), closeBrackets(),
-          keymap.of([...closeBracketsKeymap, indentWithTab, ...defaultKeymap, ...historyKeymap]),
-          editable.current.of([EditorState.readOnly.of(busy), EditorView.editable.of(!busy)]),
-          EditorView.contentAttributes.of({
-            'aria-label': 'Pythonエディタ',
-            ...(compact ? {} : { 'aria-describedby': 'weight-python-inputs' }),
-            spellcheck: 'false',
-            autocapitalize: 'off',
-          }),
-          EditorView.updateListener.of(update => {
-            if (update.docChanged) changeHandler.current(update.state.doc.toString())
-          }),
-        ],
-      }),
-    })
-    editor.current = view
-    return () => { view.destroy(); editor.current = null }
-    // The view lives for the lifetime of this editor; updates are applied below.
-  }, [])
-
-  useEffect(() => {
-    const view = editor.current
-    if (view && view.state.doc.toString() !== code) {
-      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: code } })
-    }
-  }, [code])
-
-  useEffect(() => {
-    editor.current?.dispatch({ effects: editable.current.reconfigure([
-      EditorState.readOnly.of(busy), EditorView.editable.of(!busy),
-    ]) })
-  }, [busy])
-
   return (
     <section className="weight-python" aria-labelledby={compact ? undefined : 'python-title'}>
       {!compact && <>
@@ -86,7 +32,8 @@ export function PythonEditor({ code, report, n, target, canRun, busy, compact = 
         </div>
         <p id="weight-python-inputs"><code>n = {n}</code><code>target = {target}</code><span>計量の index は 0 始まり</span></p>
       </>}
-      <div ref={parent} className="weight-code-editor" />
+      <PythonCodeEditor code={code} onChange={onChange} label={label}
+        describedBy={compact ? undefined : 'weight-python-inputs'} readOnly={busy} />
       {onRun && onStop && <div className="weight-python-actions">
         <button type="button" className="weight-primary" disabled={!canRun || !code.trim()} onClick={onRun}>実行</button>
         <button type="button" className="weight-secondary" disabled={!busy} onClick={onStop}>停止</button>

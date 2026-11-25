@@ -1,0 +1,31 @@
+.sorting .manufacturing-main { gap: 12px; grid-template-columns: minmax(0, 1fr); }
+.sorting-instructions { margin: 0; }
+.sorting-editor { height: 100%; --teal: #9fe7db; --mono: Consolas, monospace; }
+.sorting-editor .weight-code-editor { height: 100%; min-height: 0; resize: none; border: 0; border-radius: 0; }
+.sorting .workspace-windows[data-desktop="true"] .workspace-toolbar { position: static; justify-content: flex-start; padding-inline: 0; }
+.sorting .workspace-windows[data-desktop="false"] .sorting-editor { height: min(44dvh, 320px); }
+.sorting-controls { display: grid; gap: 12px; align-items: start; }
+.sorting-panel { display: grid; gap: .75rem; padding: 1rem; }
+.sorting-panel h2 { margin: 0; font-size: 1rem; }
+.sorting-panel p, .sorting-panel ul { margin: 0; }
+.sorting-panel ul { padding-inline-start: 1.3rem; }
+.sorting-panel input, .sorting-panel select {
+  border: 1px solid #426078;
+  border-radius: .35rem;
+  padding: .5rem;
+  background: #101c28;
+  color: #e3eef7;
+  font: inherit;
+}
+.sorting-panel fieldset { display: flex; flex-wrap: wrap; gap: .85rem; border: 1px solid #426078; margin: 0; min-width: 0; }
+.sorting-panel fieldset label { display: grid; gap: .3rem; }
+.sorting-panel input { width: 9rem; }
+.sorting-panel .manufacturing-buttons { max-width: 22rem; padding: 0; }
+.sorting-table { overflow: auto; }
+.sorting-table table { width: 100%; border-collapse: collapse; }
+.sorting-table th, .sorting-table td { padding: .6rem .45rem; border-bottom: 1px solid #426078; text-align: left; vertical-align: top; }
+.sorting-table details p { max-width: 36ch; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (min-width: 961px) {
+  .sorting .manufacturing-main { padding-bottom: calc(min(310px, 45dvh) + 40px); }
+  .sorting-controls { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+}

@@ -13,15 +13,23 @@ const subscribeToDesktop = (update: () => void) => {
 const isDesktop = () => window.matchMedia?.(desktopQuery).matches ?? true
 const frameId = (id: WindowId) => `workspace-${id}`
 
-export function Workspace({ layout: { windows, dispatch, tab, setTab, resetLayout, resetVersion }, panels, titleActions }: {
+export function Workspace({ layout: { windows, dispatch, tabs, setTabs, resetLayout, resetVersion }, panels, titleActions, defaultTab = 'python' }: {
   layout: WorkspaceLayout
-  panels: Record<WindowId, ReactNode>
+  panels: Partial<Record<WindowId, ReactNode>>
   titleActions?: Partial<Record<WindowId, ReactNode>>
+  defaultTab?: WindowId
 }) {
+  const ids = windowIds.filter(id => id in panels)
+  const selectedTab = tabs[defaultTab]
+  const activeTab = selectedTab === undefined ? defaultTab : selectedTab
   const desktop = useSyncExternalStore(subscribeToDesktop, isDesktop)
   const surface = useRef<HTMLDivElement>(null)
   const toolbar = useRef<HTMLDivElement>(null)
   const [bounds, setBounds] = useState<Bounds>({ width: 0, height: 0 })
+
+  function selectTab(id: WindowId | null) {
+    setTabs(current => ({ ...current, [defaultTab]: id }))
+  }
 
   useLayoutEffect(() => {
     const layer = surface.current
@@ -43,27 +51,27 @@ export function Workspace({ layout: { windows, dispatch, tab, setTab, resetLayou
   return (
     <section className="workspace-windows" data-desktop={desktop} aria-label="工場の操作ウィンドウ">
       <div ref={toolbar} className="workspace-toolbar" role="group" aria-label="ウィンドウを表示">
-        {windowIds.map(id => (
+        {ids.map(id => (
           <button key={id} data-window-button={id} type="button" aria-controls={frameId(id)}
-            aria-expanded={desktop ? windows[id].isOpen : tab === id}
-            onClick={() => desktop ? dispatch({ type: 'open', id }) : setTab(current => current === id ? null : id)}>
+            aria-expanded={desktop ? windows[id].isOpen : activeTab === id}
+            onClick={() => desktop ? dispatch({ type: 'open', id }) : selectTab(activeTab === id ? null : id)}>
             {workspaceWindows[id]}
           </button>
         ))}
         {desktop && <button type="button" onClick={resetLayout}>配置を初期化</button>}
       </div>
       <div className="workspace-surface" ref={surface}>
-        {windowIds.map(id => {
+        {ids.map(id => {
           const item = windows[id]
           const rect = windowRect(id, item, bounds)
           return <WindowFrame key={id} id={id} desktop={desktop} rect={rect} bounds={bounds} resetVersion={resetVersion}
             titleActions={titleActions?.[id]}
-            open={desktop ? item.isOpen : tab === id}
+            open={desktop ? item.isOpen : activeTab === id}
             maximized={desktop && item.isMaximized} zIndex={item.zIndex}
             onRaise={() => dispatch({ type: 'raise', id })}
             onClose={() => {
               if (desktop) dispatch({ type: 'close', id })
-              else setTab(null)
+              else selectTab(null)
               toolbar.current?.querySelector<HTMLButtonElement>(`[data-window-button=${id}]`)?.focus()
             }}
             onMaximize={() => dispatch({ type: 'maximize', id, restoreRect: rect })}
@@ -171,7 +179,7 @@ function WindowFrame({ id, desktop, open, maximized, zIndex, rect, bounds, reset
           onClick={onMaximize}>{maximized ? '復元' : '最大化'}</button>}
         <button type="button" aria-label={`${title}を閉じる`} onClick={onClose}>閉じる</button>
       </div>
-      <div className="workspace-content" tabIndex={id === 'python' ? undefined : 0}>{children}</div>
+      <div className="workspace-content" tabIndex={id === 'python' || id === 'sorting' ? undefined : 0}>{children}</div>
       {desktop && !maximized && resizeHandles.map(([direction, label]) => (
         <button key={direction} className="workspace-resize" data-direction={direction} type="button"
           aria-label={`${title}の${label}でサイズを変更（矢印キー）`} {...handle(direction)} />

@@ -11,6 +11,8 @@ export function FactoryWarehouse({ runtime }: { runtime: FactoryRuntime }) {
   const view = getWeightSearchView(line.search)
   const latest = view.log.at(-1)
   const delivery = line.lastDelivery
+  const codeStatus = line.program.queued !== null ? '適用待ち · 次の注文から'
+    : draft === line.program.active ? '適用済み' : '未適用の編集あり'
   return (
     <div className="manufacturing factory-warehouse">
       <header className="manufacturing-header"><div>◈ <strong>Brain Forge</strong>
@@ -51,7 +53,7 @@ export function FactoryWarehouse({ runtime }: { runtime: FactoryRuntime }) {
               <div className="manufacturing-code-entry">
                 <button type="button" ref={editButton} aria-expanded={codeOpen} aria-controls="manufacturing-code-panel"
                   onClick={() => setCodeOpen(!codeOpen)}>コードを編集</button>
-                <p role="status">{line.program.queued === null ? '適用済み' : '適用待ち · 次の注文から'}</p>
+                <p role="status">{codeStatus}</p>
                 {line.report.status === 'loading' && <p role="status">Pyodideを読み込み中</p>}
                 {line.report.status === 'running' && <p role="status">Pythonを実行中</p>}
                 {line.report.status === 'failed' && <p className="manufacturing-python-error" role="alert">Pythonでエラーが発生しました。</p>}

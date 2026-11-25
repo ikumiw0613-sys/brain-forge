@@ -3,14 +3,13 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { Workspace } from './Workspace'
-import { useWindowLayout, windowIds } from './windowLayout'
-import { loadWindowLayout } from './windowLayoutStorage'
+import { useWindowLayout } from './windowLayout'
 
 const storageKey = 'brain-forge:workspace-layout'
 
 function TestWorkspace() {
   const layout = useWindowLayout()
-  return <Workspace layout={layout} panels={{ python: null, events: null, performance: null }} />
+  return <Workspace layout={layout} panels={{ python: null, sorting: null, events: null, performance: null }} />
 }
 
 beforeEach(() => {
@@ -78,7 +77,6 @@ it('saves geometry once after a drag and restores it, stacking, closed and maxim
 it.each(['{', '{"version":0,"windows":{}}', '{"version":1,"windows":{}}'])(
   'uses the defaults and leaves storage alone on mount for %s', async saved => {
     window.localStorage.setItem(storageKey, saved)
-    expect(loadWindowLayout(windowIds)).toBeNull()
     const container = document.createElement('div')
     const root = createRoot(container)
     try {
@@ -90,6 +88,42 @@ it.each(['{', '{"version":0,"windows":{}}', '{"version":1,"windows":{}}'])(
     }
   },
 )
+
+it('fills in sorting.py in version 1 layouts and saves its window state in version 2', async () => {
+  const python = { rect: { x: 40, y: 320, width: 410, height: 258 }, isOpen: true, isMaximized: false, zIndex: 8 }
+  const events = { rect: null, isOpen: false, isMaximized: false, zIndex: 7 }
+  const performance = { ...python, isMaximized: true, zIndex: 6 }
+  window.localStorage.setItem(storageKey, JSON.stringify({ version: 1, windows: { python, events, performance } }))
+  const container = document.createElement('div')
+  let root = createRoot(container)
+  const click = (selector: string) => act(async () => container.querySelector<HTMLButtonElement>(selector)!.click())
+  const sorting = () => container.querySelector<HTMLElement>('#workspace-sorting')!
+  try {
+    await act(async () => root.render(<TestWorkspace />))
+    expect(container.querySelector<HTMLElement>('#workspace-python')?.style.left).toBe('40px')
+    expect(sorting().hidden).toBe(false)
+    const width = parseInt(sorting().style.width)
+    await act(async () => sorting().querySelector('[data-direction="w"]')!
+      .dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowLeft' })))
+    await click('#workspace-sorting [aria-label="sorting.pyを最大化"]')
+    await click('#workspace-sorting [aria-label="sorting.pyを閉じる"]')
+    expect(JSON.parse(window.localStorage.getItem(storageKey)!)).toMatchObject({
+      version: 2, windows: { python, events, performance, sorting: { isOpen: false, isMaximized: true, zIndex: 9 } },
+    })
+
+    await act(async () => root.unmount())
+    root = createRoot(container)
+    await act(async () => root.render(<TestWorkspace />))
+    expect(sorting().hidden).toBe(true)
+    expect(sorting().dataset.maximized).toBe('true')
+    expect(sorting().style.zIndex).toBe('9')
+    await click('[data-window-button="sorting"]')
+    await click('#workspace-sorting [aria-label="sorting.pyを復元"]')
+    expect(sorting().style.width).toBe(`${width + 16}px`)
+  } finally {
+    await act(async () => root.unmount())
+  }
+})
 
 it('opens and resets windows when access to localStorage throws', async () => {
   vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => { throw new Error('Storage unavailable') })

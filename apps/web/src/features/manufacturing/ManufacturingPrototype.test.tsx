@@ -13,6 +13,7 @@ beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
   vi.stubGlobal('scrollTo', vi.fn())
   vi.useFakeTimers()
+  window.localStorage.clear()
   window.history.replaceState(null, '', '/prototypes/manufacturing/')
   container = document.createElement('div')
   document.body.append(container)

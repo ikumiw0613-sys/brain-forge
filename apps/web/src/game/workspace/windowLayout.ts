@@ -3,6 +3,7 @@ import { clearWindowLayout, loadWindowLayout, saveWindowLayout } from './windowL
 
 export const workspaceWindows = {
   python: 'warehouse.py',
+  sorting: 'sorting.py',
   events: 'イベントログ',
   performance: '生産指標',
 }
@@ -23,6 +24,7 @@ export const windowIds = Object.keys(workspaceWindows) as WindowId[]
 
 const initialLayout: WindowLayout = {
   python: { rect: null, zIndex: 3, isOpen: true, isMaximized: false },
+  sorting: { rect: null, zIndex: 1, isOpen: true, isMaximized: false },
   events: { rect: null, zIndex: 2, isOpen: true, isMaximized: false },
   performance: { rect: null, zIndex: 1, isOpen: true, isMaximized: false },
 }
@@ -34,6 +36,13 @@ const minHeight = 155
 function defaultRect(id: WindowId, bounds: Bounds): WindowRect {
   const gap = 8
   const side = 16
+  const height = Math.min(310, Math.round(bounds.height * .45))
+  const y = bounds.height - height - 24
+  if (id === 'sorting') {
+    const width = Math.min(640, Math.round(bounds.width * .46))
+    return { x: bounds.width - width - side, y, width, height }
+  }
+
   const available = Math.max(0, bounds.width - 2 * (side + gap))
   const performanceWidth = Math.max(minWidth, Math.round(available * .26))
   const editorWidth = Math.round((available - performanceWidth) * .55)
@@ -42,8 +51,7 @@ function defaultRect(id: WindowId, bounds: Bounds): WindowRect {
     events: { x: side + gap + editorWidth, width: available - performanceWidth - editorWidth },
     performance: { x: side + 2 * gap + available - performanceWidth, width: performanceWidth },
   }[id]
-  const height = Math.min(310, Math.round(bounds.height * .45))
-  return { x, y: bounds.height - height - 24, width, height }
+  return { x, y, width, height }
 }
 
 export function fitWindow(rect: WindowRect, bounds: Bounds): WindowRect {
@@ -80,12 +88,12 @@ function updateWindow(layout: WindowLayout, action: WindowAction): WindowLayout 
   if (action.type === 'reset') return initialLayout
   const { id } = action
   const current = layout[id]
-  const top = Math.max(...windowIds.map(key => layout[key].zIndex))
-  const zIndex = current.zIndex === top ? top : top + 1
+  const top = Math.max(...windowIds.filter(key => key !== id).map(key => layout[key].zIndex))
+  const zIndex = current.zIndex > top ? current.zIndex : top + 1
   switch (action.type) {
     case 'open':
     case 'raise':
-      return current.isOpen && current.zIndex === top ? layout : { ...layout, [id]: { ...current, isOpen: true, zIndex } }
+      return current.isOpen && current.zIndex === zIndex ? layout : { ...layout, [id]: { ...current, isOpen: true, zIndex } }
     case 'close':
       return { ...layout, [id]: { ...current, isOpen: false } }
     case 'maximize':
@@ -96,8 +104,8 @@ function updateWindow(layout: WindowLayout, action: WindowAction): WindowLayout 
 }
 
 export function useWindowLayout() {
-  const [windows, dispatch] = useReducer(updateWindow, initialLayout, fallback => loadWindowLayout(windowIds) ?? fallback)
-  const [tab, setTab] = useState<WindowId | null>('python')
+  const [windows, dispatch] = useReducer(updateWindow, initialLayout, fallback => loadWindowLayout(fallback) ?? fallback)
+  const [tabs, setTabs] = useState<Partial<Record<WindowId, WindowId | null>>>({})
   const [resetVersion, setResetVersion] = useState(0)
   const previous = useRef(windows)
   useLayoutEffect(() => {
@@ -108,11 +116,11 @@ export function useWindowLayout() {
   function resetLayout() {
     clearWindowLayout()
     dispatch({ type: 'reset' })
-    setTab('python')
+    setTabs({})
     setResetVersion(version => version + 1)
   }
 
-  return { windows, dispatch, tab, setTab, resetLayout, resetVersion }
+  return { windows, dispatch, tabs, setTabs, resetLayout, resetVersion }
 }
 
 export type WorkspaceLayout = ReturnType<typeof useWindowLayout>

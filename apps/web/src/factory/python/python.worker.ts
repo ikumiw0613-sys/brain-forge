@@ -1,4 +1,5 @@
 /// <reference lib="webworker" />
+import { loadPython } from './loadPython'
 import type { PythonCommand, PythonEvent, PythonPrepareCommand } from './pythonProtocol'
 
 const worker = self as unknown as DedicatedWorkerGlobalScope
@@ -7,18 +8,6 @@ const waiting = new Map<number, { resolve: (weight: number) => void; reject: (er
 let runId: number | undefined
 let requestId = 0
 let prepared: ReturnType<typeof loadPython> | undefined
-
-async function loadPython() {
-  const directory = new URL(`${import.meta.env.BASE_URL}pyodide/`, worker.location.origin)
-  const moduleUrl = new URL('pyodide.mjs', directory).href
-  const { loadPyodide }: typeof import('pyodide') = await import(/* @vite-ignore */ moduleUrl)
-  return loadPyodide({
-    indexURL: directory.href,
-    jsglobals: Object.create(null),
-    stdout: () => {},
-    stderr: () => {},
-  })
-}
 
 async function execute({ code, n, target, runId }: Extract<PythonCommand, { type: 'run' }>) {
   try {

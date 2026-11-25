@@ -21,6 +21,7 @@ const routes = {
   warehouse: 'map/?view=warehouse',
   factory: 'prototypes/manufacturing/',
   analysis: 'map/?view=benchmark',
+  sorting: 'map/?view=sorting',
 }
 
 const navigation = [
@@ -28,6 +29,7 @@ const navigation = [
   { label: '部品倉庫', route: routes.warehouse, icon: 'M3 10 12 4l9 6v10H3zM7 20v-7h10v7M7 16h10' },
   { label: '製造工場', route: routes.factory, icon: 'M3 21V11l6-4v4l6-4v5h3V4h3v17zM7 16h1m4 0h1m4 0h1' },
   { label: '性能試験', route: routes.analysis, icon: 'M9 3h6m-5 0v7L4 19a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2l-6-9V3M7 15h10' },
+  { label: '仕分け施設', route: routes.sorting, icon: 'M7 4v16m-3-3 3 3 3-3m4-12h6m-6 5h4m-4 5h2' },
 ] as const
 
 const facilities: readonly Facility[] = [
@@ -35,7 +37,7 @@ const facilities: readonly Facility[] = [
   { kind: 'factory', name: '製造工場', status: 'available', route: routes.factory },
   { kind: 'shipping', name: '出荷センター', status: 'planned' },
   { kind: 'analysis', name: '分析室', status: 'available', route: routes.analysis },
-  { kind: 'sorting', name: '仕分け施設', status: 'locked' },
+  { kind: 'sorting', name: '仕分け施設', status: 'available', route: routes.sorting },
   { kind: 'logistics', name: '物流センター', status: 'locked' },
 ]
 

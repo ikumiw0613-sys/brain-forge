@@ -189,8 +189,8 @@ body { margin: 0; min-width: 320px; }
   .map-header .map-shell { min-height: 55px; }
   .map-header-status { flex-wrap: wrap; justify-content: flex-end; gap: 4px 6px; }
   .map-workspace { grid-template-columns: minmax(0, 1fr); padding-top: 10px; }
-  .map-nav { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 5px; gap: 4px; }
-  .map-nav a { flex-direction: column; justify-content: center; gap: 4px; padding-inline: 1px; font-size: .72rem; }
+  .map-nav { grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 5px; gap: 4px; }
+  .map-nav a { flex-direction: column; justify-content: center; gap: 4px; padding-inline: 1px; font-size: .72rem; text-align: center; }
   .map-site { max-width: 420px; margin-inline: auto; }
   .map-road-curb { stroke-width: 19; }
   .map-road-surface { stroke-width: 16; }

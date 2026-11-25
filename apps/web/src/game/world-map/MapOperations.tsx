@@ -29,7 +29,8 @@ export function MapPythonActions({ draft, program, onApply }: Pick<MapEditorData
 export function MapPythonEditor({ data }: { data: MapEditorData }) {
   return (
     <div className="map-editor">
-      <PythonEditor code={data.draft} report={data.report} n={data.n} target={data.target} busy={false} compact onChange={data.onChange} />
+      <PythonEditor code={data.draft} report={data.report} n={data.n} target={data.target} busy={false} compact
+        label="warehouse.py" onChange={data.onChange} />
     </div>
   )
 }

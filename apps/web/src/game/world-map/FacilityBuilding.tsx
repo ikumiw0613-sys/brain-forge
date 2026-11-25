@@ -110,7 +110,7 @@ export function FacilityBuilding({ kind, lamp }: { kind: FacilityKind; lamp?: 'w
         <polyline className="map-dock-paint" points={projectedPoints([.35, 1.39, 9], [.35, 1.79, 9], [1.53, 1.79, 9])} />
         <PalletStack x={.53} y={1.60} /><LoadingTruck />
       </>}
-      {(kind === 'sorting' || kind === 'logistics') && <polyline className="map-closed-barrier" points={projectedPoints(
+      {kind === 'logistics' && <polyline className="map-closed-barrier" points={projectedPoints(
         [.30, 1.88, 8], [1.68, 1.88, 8],
       )} />}
       {kind === 'analysis' && [.52, .69, 1.41, 1.58].map(x => (
