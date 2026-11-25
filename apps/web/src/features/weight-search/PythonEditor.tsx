@@ -14,7 +14,7 @@ export function PythonEditor({ code, report, n, target, canRun, busy, compact = 
   code: string
   report: PythonReport
   n: number
-  target: number
+  target: number | null
   canRun?: boolean
   busy: boolean
   compact?: boolean
@@ -30,7 +30,7 @@ export function PythonEditor({ code, report, n, target, canRun, busy, compact = 
           <h3 id="python-title">Pythonエディタ</h3>
           <span className="weight-python-status" role="status" data-status={report.status}>{statusText[report.status]}</span>
         </div>
-        <p id="weight-python-inputs"><code>n = {n}</code><code>target = {target}</code><span>計量の index は 0 始まり</span></p>
+        <p id="weight-python-inputs"><code>n = {n}</code><code>target = {target ?? '—'}</code><span>計量の index は 0 始まり</span></p>
       </>}
       <PythonCodeEditor code={code} onChange={onChange} label={label}
         describedBy={compact ? undefined : 'weight-python-inputs'} readOnly={busy} />

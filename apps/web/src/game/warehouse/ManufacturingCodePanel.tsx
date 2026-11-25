@@ -17,8 +17,8 @@ export function ManufacturingCodePanel({ open, onClose, draft, onChange, onApply
   program: { active: string; queued: string | null }
   report: PythonReport
   n: number
-  target: number
-  orderId: string
+  target: number | null
+  orderId?: string
   measurements: readonly Measurement[]
   running: boolean
 }) {
@@ -78,7 +78,7 @@ export function ManufacturingCodePanel({ open, onClose, draft, onChange, onApply
       <PythonEditor code={draft} report={report} n={n} target={target} busy={false} onChange={onChange} />
       <section className="warehouse-code-log" aria-labelledby="warehouse-code-log-title">
         <div className="warehouse-code-log-heading">
-          <h3 id="warehouse-code-log-title">計量ログ</h3><code>{orderId}</code>
+          <h3 id="warehouse-code-log-title">計量ログ</h3>{orderId && <code>{orderId}</code>}
           {outcome && <span>{outcome}</span>}
         </div>
         {latestMeasurements.length > 0 ? <ul>

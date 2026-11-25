@@ -18,6 +18,19 @@ export function generateSupplyWeights(seed: number, size: number) {
   return generateWeights(size, () => supplySample(seed, ++position))
 }
 
+export function generateUnsortedSupplyWeights(seed: number, size: number) {
+  const weights = generateSupplyWeights(seed, size)
+  // Negative sample positions keep the shuffle independent of generation and order sampling.
+  for (let index = weights.length - 1; index > 0; index--) {
+    const other = Math.floor(supplySample(seed, -index) * (index + 1))
+    const weight = weights[index]
+    weights[index] = weights[other]
+    weights[other] = weight
+  }
+  if (weights.every((weight, index) => index === 0 || weight >= weights[index - 1])) weights.reverse()
+  return weights
+}
+
 export function createPythonSupply(supplyTicks: SupplyTicks, seed: number, sizeOrWeights: number | readonly number[] = supplyWarehouseSize) {
   const generate = typeof sizeOrWeights === 'number'
   const weights = generate ? generateSupplyWeights(seed, sizeOrWeights) : sizeOrWeights

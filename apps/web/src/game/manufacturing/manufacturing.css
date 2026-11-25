@@ -45,6 +45,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid #aaf6ef; outline
 .manufacturing-controls label { display: grid; gap: 8px; padding: 18px 18px 0; color: #c2d1dc; font-size: .85rem; }
 .manufacturing-controls select { width: 100%; padding: 10px; border: 1px solid #526c80; border-radius: 6px; background: #0d1b29; color: #edf5fb; }
 .manufacturing-controls p { margin: 8px 18px 0; color: #a5b8c7; font-size: .75rem; line-height: 1.6; }
+.manufacturing-sorting-error { margin: 8px 18px 0; color: #ffd3bf; font-size: .85rem; }
 .manufacturing-buttons { display: flex; gap: 8px; padding: 22px 18px 0; }
 .manufacturing-buttons button { min-height: 42px; padding: 8px 16px; border: 1px solid #5a7184; border-radius: 6px; background: #1a2a3b; color: #f0f6fb; cursor: pointer; }
 .manufacturing-buttons .manufacturing-primary { flex: 1; background: #f8bc88; border-color: #f8bc88; color: #21160e; font-weight: 700; }

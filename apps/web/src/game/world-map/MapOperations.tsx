@@ -10,7 +10,7 @@ export type MapEditorData = {
   program: { active: string; queued: string | null }
   report: PythonReport
   n: number
-  target: number
+  target: number | null
   measurements: readonly Measurement[]
 }
 

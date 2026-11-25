@@ -8,7 +8,7 @@ const ports = {
   front: projectFactory([.95, 2.02]),
 }
 type Port = readonly [facility: FacilityKind, side: keyof typeof ports]
-type Connection = Readonly<{ from: Port; to: Port; via: readonly [Point, Point]; kind: 'main' | 'analysis' | 'future' }>
+type Connection = Readonly<{ from: Port; to: Port; via: readonly [Point, Point]; kind: 'main' | 'analysis' | 'sorting' | 'future' }>
 export type SiteLayout = Readonly<{
   width: number
   height: number
@@ -24,7 +24,7 @@ export const wideSite: SiteLayout = {
     { from: ['warehouse', 'east'], to: ['factory', 'west'], via: [[291, 260], [352, 195]], kind: 'main' },
     { from: ['factory', 'east'], to: ['shipping', 'west'], via: [[616, 278], [678, 211]], kind: 'main' },
     { from: ['factory', 'front'], to: ['analysis', 'west'], via: [[363, 313], [345, 426]], kind: 'analysis' },
-    { from: ['warehouse', 'front'], to: ['sorting', 'west'], via: [[81, 321], [48, 416]], kind: 'future' },
+    { from: ['sorting', 'west'], to: ['warehouse', 'front'], via: [[48, 416], [81, 321]], kind: 'sorting' },
     { from: ['shipping', 'east'], to: ['logistics', 'east'], via: [[1009, 311], [986, 460]], kind: 'future' },
   ],
 }
@@ -36,7 +36,7 @@ export const narrowSite: SiteLayout = {
     { from: ['warehouse', 'east'], to: ['factory', 'east'], via: [[258, 196], [258, 327]], kind: 'main' },
     { from: ['factory', 'west'], to: ['shipping', 'west'], via: [[29, 333], [29, 492]], kind: 'main' },
     { from: ['factory', 'east'], to: ['analysis', 'east'], via: [[281, 384], [269, 715]], kind: 'analysis' },
-    { from: ['shipping', 'front'], to: ['sorting', 'west'], via: [[32, 603], [24, 831]], kind: 'future' },
+    { from: ['sorting', 'west'], to: ['warehouse', 'west'], via: [[16, 831], [16, 172]], kind: 'sorting' },
     { from: ['shipping', 'east'], to: ['logistics', 'east'], via: [[346, 566], [346, 892]], kind: 'future' },
   ],
 }

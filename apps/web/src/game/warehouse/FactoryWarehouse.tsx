@@ -8,8 +8,9 @@ export function FactoryWarehouse({ runtime }: { runtime: FactoryRuntime }) {
   const { line, instant, setInstant, draft, setDraft } = runtime
   const [codeOpen, setCodeOpen] = useState(false)
   const editButton = useRef<HTMLButtonElement>(null)
-  const view = getWeightSearchView(line.search)
-  const latest = view.log.at(-1)
+  const view = line.search && getWeightSearchView(line.search)
+  const latest = view?.log.at(-1)
+  const order = view?.order
   const delivery = line.lastDelivery
   const codeStatus = line.program.queued !== null ? '適用待ち · 次の注文から'
     : draft === line.program.active ? '適用済み' : '未適用の編集あり'
@@ -24,17 +25,17 @@ export function FactoryWarehouse({ runtime }: { runtime: FactoryRuntime }) {
           <div className="manufacturing-title"><div><p>部品供給</p><h1>部品倉庫</h1></div></div>
           <div className="manufacturing-layout">
             <section className="manufacturing-panel manufacturing-python" aria-labelledby="manufacturing-warehouse">
-              <div className="manufacturing-panel-heading"><h2 id="manufacturing-warehouse">製造工場からの依頼</h2><span>{view.order.id}</span></div>
-              <StackedWarehouse size={view.slots.length} parked={view.pending?.index ?? latest?.index ?? 0}
-                motion={null} bounds={view.candidates} pendingIndex={view.pending?.index} />
+              <div className="manufacturing-panel-heading"><h2 id="manufacturing-warehouse">製造工場からの依頼</h2><span>{order?.id ?? '注文待ち'}</span></div>
+              <StackedWarehouse size={line.warehouseSize} parked={view?.pending?.index ?? latest?.index ?? 0}
+                motion={null} bounds={view?.candidates ?? { lower: 0, upper: line.warehouseSize }} pendingIndex={view?.pending?.index} />
               <p id="shelf-legend" className="manufacturing-shelf-legend">シアンの枠は探索候補、ひし形は計量中の棚です。</p>
               <dl className="manufacturing-readings">
-                <div><dt>必要重量</dt><dd>{view.order.requiredWeight} kg</dd></div>
-                <div><dt>計量中の index</dt><dd>{view.pending?.index ?? '—'}</dd></div>
+                <div><dt>必要重量</dt><dd>{order ? `${order.requiredWeight} kg` : '—'}</dd></div>
+                <div><dt>計量中の index</dt><dd>{view?.pending?.index ?? '—'}</dd></div>
                 <div><dt>直近の計量</dt><dd>{latest ? `index ${latest.index} · ${latest.weight} kg` : '—'}</dd></div>
-                <div><dt>今回の計量回数</dt><dd>{view.cost.count} 回</dd></div>
+                <div><dt>今回の計量回数</dt><dd>{view?.cost.count ?? 0} 回</dd></div>
                 <div><dt>今回の部品待ち</dt><dd>{line.line.waiting} Tick</dd></div>
-                <div><dt>累計電力消費</dt><dd>{view.totalPower} pt</dd></div>
+                <div><dt>累計電力消費</dt><dd>{view?.totalPower ?? 0} pt</dd></div>
               </dl>
             </section>
             <aside className="manufacturing-panel manufacturing-controls">
@@ -42,7 +43,7 @@ export function FactoryWarehouse({ runtime }: { runtime: FactoryRuntime }) {
               <p><a className="manufacturing-map-link" href={`${import.meta.env.BASE_URL}map/?view=benchmark`}>アルゴリズム性能試験</a></p>
               <p>製造ラインの稼働中は、Pythonで選んだ部品を確認し、自動で製造工場へ送ります。</p>
               <p>{delivery ? `直近の発送：${delivery.orderId} · 棚 ${delivery.index} · ${delivery.weight} kg` : 'まだ発送していません'}</p>
-              <label>部品数 n<select value={view.slots.length} disabled={line.started}
+              <label>部品数 n<select value={line.warehouseSize} disabled={line.started || line.preparation.status === 'preparing'}
                 onChange={event => line.resizeWarehouse(Number(event.target.value))}>
                 {warehouseSizes.map(size => <option key={size} value={size}>{size.toLocaleString('ja-JP')} 個</option>)}
               </select></label>
@@ -68,8 +69,8 @@ export function FactoryWarehouse({ runtime }: { runtime: FactoryRuntime }) {
           setCodeOpen(false)
           editButton.current?.focus()
         }} draft={draft} onChange={setDraft} onApply={() => line.applyCode(draft)}
-          program={line.program} report={line.report} n={view.slots.length} target={view.order.requiredWeight}
-          orderId={view.order.id} measurements={view.log} running={line.line.running} />
+          program={line.program} report={line.report} n={line.warehouseSize} target={order?.requiredWeight ?? null}
+          orderId={order?.id} measurements={view?.log ?? []} running={line.line.running} />
       </div>
     </div>
   )

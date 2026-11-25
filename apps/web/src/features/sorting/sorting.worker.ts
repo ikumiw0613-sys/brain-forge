@@ -1,12 +1,11 @@
 /// <reference lib="webworker" />
 import { loadPython } from '../../factory/python/loadPython'
-import { repetitions } from './sortingCases'
 import type { SortingCommand, SortingEvent } from './sortingProtocol'
 
 const worker = self as unknown as DedicatedWorkerGlobalScope
 const send = (event: SortingEvent) => worker.postMessage(event)
 
-worker.onmessage = async ({ data: { code, input } }: MessageEvent<SortingCommand>) => {
+worker.onmessage = async ({ data: { code, input, sampleCount } }: MessageEvent<SortingCommand>) => {
   worker.onmessage = null
   try {
     const python = await loadPython()
@@ -38,7 +37,7 @@ _measure
           return
         }
         const samples = []
-        for (let index = 0; index < repetitions; index++) {
+        for (let index = 0; index < sampleCount; index++) {
           const sample = measure(sort, parts)
           if (sample == null) {
             send({ type: 'failed', reason: 'invalid-result', detail: '整数だけを含む Python の list を返してください。' })

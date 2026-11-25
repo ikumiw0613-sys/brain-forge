@@ -67,7 +67,8 @@ export function createWarehouse(weights: readonly number[], { allowDuplicates = 
     const weightType = allowDuplicates ? 'positive' : 'distinct positive'
     throw new RangeError(`The warehouse needs a supported number of ${weightType} integer weights.`)
   }
-  return warehouse.sort((left, right) => left - right)
+  return warehouse.every((weight, index) => index === 0 || weight >= warehouse[index - 1])
+    ? warehouse : warehouse.sort((left, right) => left - right)
 }
 
 export function generateOrder(min: number, max: number, sample: number, previous?: Order): Order {

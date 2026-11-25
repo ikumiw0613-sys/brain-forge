@@ -5,11 +5,11 @@ import { usePythonDraft } from '../python/usePythonDraft'
 import { useManufacturingLine } from './useManufacturingLine'
 import { initialPythonCode } from '../warehouse/initialPythonCode'
 
-export function useFactoryRuntime() {
+export function useFactoryRuntime(sortingCode: string) {
   const [speed, setSpeed] = useState<ConveyorSpeed>(1)
   const [instant, setInstant] = useState(false)
   const [draft, setDraft] = usePythonDraft('warehouse', initialPythonCode)
-  const line = useManufacturingLine(speed, instant, defaultSupplySeed, initialPythonCode)
+  const line = useManufacturingLine(speed, instant, defaultSupplySeed, initialPythonCode, sortingCode)
 
   return {
     line, speed, setSpeed, instant, setInstant, draft, setDraft,

@@ -1,6 +1,7 @@
 import { useId, useState, useSyncExternalStore } from 'react'
 import { dashboardWindowTicks, productionTicks } from '../../factory/manufacturing/engine'
 import type { MachineStatus } from '../../factory/manufacturing/engine'
+import type { WarehousePreparation } from '../../factory/runtime/useManufacturingLine'
 import { FacilityBuilding } from './FacilityBuilding'
 import type { FacilityKind } from './FacilityBuilding'
 import { SiteConnections } from './SiteConnections'
@@ -59,6 +60,7 @@ type MapActivity = {
   measurementIndex?: number | null
   running?: boolean
   started?: boolean
+  preparation?: WarehousePreparation
   onToggleRunning?: () => void
   machineStatus?: MachineStatus
   progress?: number
@@ -73,7 +75,7 @@ type MapActivity = {
   workspace?: WorkspaceLayout
 }
 
-export function WorldMap({ measurementIndex = null, running = false, started = false, onToggleRunning, machineStatus,
+export function WorldMap({ measurementIndex = null, running = false, started = false, preparation, onToggleRunning, machineStatus,
   progress = 0, delivery = null, revenue = 0, revenueRate = 0, windowTicks = 0, elapsedTicks, completed, order, editor, workspace }: MapActivity) {
   const narrow = useSyncExternalStore(subscribeToViewport, isNarrowViewport)
   const layout = narrow ? narrowSite : wideSite
@@ -81,6 +83,11 @@ export function WorldMap({ measurementIndex = null, running = false, started = f
   const [orderDetailsOpen, setOrderDetailsOpen] = useState(false)
   // Receipt references remain stable between ticks. The initial one predates this visit.
   const [deliveryOnEntry] = useState(delivery)
+  const preparing = preparation?.status === 'preparing'
+  const sortingError = preparation?.status === 'error'
+  const sortingActivity = preparation && {
+    idle: '仕分け待ち', preparing: '仕分け準備中', ready: '準備完了', error: '仕分けエラー',
+  }[preparation.status]
   const weighing = running && measurementIndex !== null
   const measurementActivity = measurementIndex === null ? undefined
     : `棚 ${measurementIndex} · ${weighing ? '計量中' : '計量一時停止'}`
@@ -136,9 +143,11 @@ export function WorldMap({ measurementIndex = null, running = false, started = f
         <span className="map-brand-mark" aria-hidden="true">◈</span><strong>Brain Forge</strong>
         <div className="map-header-status">
           {elapsedTicks !== undefined && <span>{elapsedTicks.toLocaleString('ja-JP')} Tick</span>}
-          <span className="map-live-status" role="status" data-running={running}>{running ? '稼働中' : started ? '一時停止中' : '停止中'}</span>
+          <span className="map-live-status" role="status" data-running={running}>
+            {preparing || sortingError ? sortingActivity : running ? '稼働中' : started ? '一時停止中' : '停止中'}
+          </span>
           {onToggleRunning && <button className="map-run-control" type="button" onClick={onToggleRunning}>
-            {running ? '一時停止' : started ? '再開' : '起動'}
+            {preparing ? '仕分けを中止' : sortingError ? '再試行' : running ? '一時停止' : started ? '再開' : '起動'}
           </button>}
         </div>
       </div></header>
@@ -157,6 +166,11 @@ export function WorldMap({ measurementIndex = null, running = false, started = f
         <div className="map-overview">
           <h1 id="map-title">工場拠点マップ</h1>
           <p className="map-instruction"><span>主搬送経路</span> 部品倉庫 → 製造工場 → 出荷センター</p>
+          {preparation?.status === 'ready' && <p className="map-instruction map-preparation-status"><span>仕分け施設</span> 準備完了</p>}
+          {sortingError && <div className="map-sorting-error" role="alert">
+            <pre>{preparation.detail}</pre>
+            <a href={`${import.meta.env.BASE_URL}${routes.sorting}`}>sorting.py を編集</a>
+          </div>}
         </div>
         <div className="map-scene">
         <svg className="map-site" viewBox={`0 0 ${layout.width} ${layout.height}`} role="group" aria-label="工場施設">
@@ -183,7 +197,8 @@ export function WorldMap({ measurementIndex = null, running = false, started = f
             const state = states[facility.status]
             const isWarehouse = facility.kind === 'warehouse'
             const isFactory = facility.kind === 'factory'
-            const activity = isWarehouse ? measurementActivity : isFactory ? factoryActivity : undefined
+            const activity = isWarehouse ? measurementActivity : isFactory ? factoryActivity
+              : facility.kind === 'sorting' ? sortingActivity : undefined
             const label = `${facility.name}、${state}${activity ? `、${activity}` : ''}`
             const showGauge = isFactory && machineStatus !== undefined
             const content = <>
@@ -220,6 +235,7 @@ export function WorldMap({ measurementIndex = null, running = false, started = f
         </div>
         <div className="map-legend">
           <span><i className="map-legend-main" aria-hidden="true" />主搬送路</span>
+          <span><i className="map-legend-sorting" aria-hidden="true" />初期仕分け</span>
           <span><i className="map-legend-analysis" aria-hidden="true" />分析室への連絡路</span>
           <span><i className="map-legend-future" aria-hidden="true" />将来の分岐</span>
           <span><i className="map-legend-road" aria-hidden="true" />構内道路</span>

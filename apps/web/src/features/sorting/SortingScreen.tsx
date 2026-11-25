@@ -120,6 +120,7 @@ export function SortingScreen({ code, onChange, workspace, warehouseEditor }: {
       <main className="manufacturing-main">
         <div className="manufacturing-title"><h1>仕分け施設</h1><span>利用可能 · 学習モード</span></div>
         <p className="sorting-instructions" id="sorting-code-help"><code>sorting.py</code> の <code>sort_parts(a)</code> に整数リストが渡されます。昇順に並べ替えたリストを返してください。</p>
+        <p className="sorting-instructions">工場の初期仕分けでは、起動時点の下書きを使います。</p>
         <Workspace layout={workspace} defaultTab="sorting" panels={{
           python: warehouseEditor,
           sorting: <div className="sorting-editor">

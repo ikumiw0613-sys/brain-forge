@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { FactoryApp } from '../factory/FactoryApp'
 import type { PythonCommand, PythonEvent, PythonPrepareCommand } from '../../factory/python/pythonProtocol'
+import type { SortingCommand, SortingEvent } from '../sorting/sortingProtocol'
 import { createPythonSupply, defaultSupplySeed } from './pythonSupply'
 import { initialPythonCode } from '../../factory/warehouse/initialPythonCode'
 
@@ -109,11 +110,21 @@ it.each([[1, 500], [2, 250]])('updates map revenue at %i× and retains it across
 
 class TestWorker {
   static instances: TestWorker[] = []
-  onmessage: ((event: MessageEvent<PythonEvent>) => void) | null = null
+  onmessage: ((event: MessageEvent<PythonEvent | SortingEvent>) => void) | null = null
   commands: (PythonCommand | PythonPrepareCommand)[] = []
   terminate = vi.fn()
-  constructor() { TestWorker.instances.push(this) }
-  postMessage(command: PythonCommand | PythonPrepareCommand) { this.commands.push(command) }
+  constructor(url: URL) {
+    if (!url.pathname.endsWith('/sorting.worker.ts')) TestWorker.instances.push(this)
+  }
+  postMessage(command: PythonCommand | PythonPrepareCommand | SortingCommand) {
+    if ('input' in command) {
+      this.onmessage?.(new MessageEvent('message', { data: { type: 'ready' } }))
+      const output = [...command.input].sort((a, b) => a - b)
+      this.onmessage?.(new MessageEvent('message', { data: { type: 'finished', samples: [{ ms: 1, output }] } }))
+    } else {
+      this.commands.push(command)
+    }
+  }
   get run() { return this.commands.find(command => command.type === 'run')! }
   emit(event: PythonEvent) { return act(async () => this.onmessage?.(new MessageEvent('message', { data: event }))) }
 }

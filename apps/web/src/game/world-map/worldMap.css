@@ -43,6 +43,11 @@ body { margin: 0; min-width: 320px; }
 .map-overview { padding: 15px 18px 13px; border-bottom: 1px solid #30495f; background: #142539; border-radius: 11px 11px 0 0; }
 .map-instruction { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 8px 0 0; color: #c6d7e5; font-size: .9rem; }
 .map-instruction span { color: #8cebe0; font-size: .75rem; font-weight: 700; }
+.map-sorting-error { margin-top: 8px; color: #ffd3bf; font-size: .85rem; }
+.map-sorting-error a { color: #a2f5e5; }
+.map-sorting-error pre, .manufacturing-sorting-error pre {
+  max-height: 9rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+}
 .map-info { min-width: 0; padding: 9px 11px; }
 .map-performance-link { display: inline-block; margin-top: 7px; color: #a2f5e5; font-size: .8rem; }
 .map-current-order { margin-top: 9px; padding-top: 7px; border-top: 1px solid #2c4256; }
@@ -91,15 +96,17 @@ body { margin: 0; min-width: 320px; }
 .map-sign-arrow { stroke: #b7e5fa; }
 .map-ground-marker { stroke: #c1a775; }
 .map-main-route { --rail: #529a9f; --bed: #193d4b; --track: #8cebe0; }
+.map-sorting-route { --rail: #a68154; --bed: #433423; --track: #f5ca8a; }
 .map-analysis-route { --rail: #647caa; --bed: #29354c; --track: #b3c9f9; }
 .map-future-route { --rail: #526478; --bed: #253443; --track: #8f9eac; }
 .map-track-edge, .map-track-bed, .map-track-center, .map-direction { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .map-track-edge { stroke: var(--rail); stroke-width: 18; }
 .map-track-bed { stroke: var(--bed); stroke-width: 14; }
 .map-track-center { stroke: var(--track); stroke-width: 1.5; stroke-dasharray: 3 6; }
-.map-connections :is(.map-future-route, .map-analysis-route) .map-track-edge { stroke-width: 11; }
-.map-connections :is(.map-future-route, .map-analysis-route) .map-track-bed { stroke-width: 8; }
+.map-connections :is(.map-sorting-route, .map-future-route, .map-analysis-route) .map-track-edge { stroke-width: 11; }
+.map-connections :is(.map-sorting-route, .map-future-route, .map-analysis-route) .map-track-bed { stroke-width: 8; }
 .map-direction { stroke: #c4fff5; stroke-width: 2.4; }
+.map-sorting-route .map-direction { stroke: var(--track); }
 .map-dock { fill: var(--track); }
 .map-cargo {
   pointer-events: none;
@@ -164,6 +171,7 @@ body { margin: 0; min-width: 320px; }
 .map-legend { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 12px 15px; border-top: 1px solid #30495f; color: #b5c6d5; font-size: .8rem; }
 .map-legend span { display: flex; align-items: center; gap: 7px; }
 .map-legend i { display: block; width: 22px; border-top: 3px solid #8cebe0; }
+.map-legend .map-legend-sorting { border-color: #f5ca8a; }
 .map-legend .map-legend-analysis { border-color: #b3c9f9; border-top-style: dotted; }
 .map-legend .map-legend-future { border-color: #8f9eac; border-top-style: dashed; }
 .map-legend .map-legend-road { border-color: #b49e73; }

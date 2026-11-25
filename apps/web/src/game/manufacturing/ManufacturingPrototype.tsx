@@ -10,8 +10,11 @@ const labels: Record<MachineStatus, string> = {
 }
 export function ManufacturingPrototype({ runtime }: { runtime: FactoryRuntime }) {
   const { line, speed, setSpeed } = runtime
-  const { line: state, search, started, lastDelivery } = line
+  const { line: state, search, started, lastDelivery, preparation } = line
   const dashboard = getManufacturingDashboard(state)
+  const preparing = preparation.status === 'preparing'
+  const sortingError = preparation.status === 'error'
+  const status = preparing ? '仕分け準備中' : sortingError ? '仕分けエラー' : state.running ? '稼働中' : started ? '一時停止中' : '停止中'
 
   const utilization = state.tick ? (state.totalProcessing / state.tick * 100).toFixed(1) : '0.0'
   return (
@@ -31,7 +34,7 @@ export function ManufacturingPrototype({ runtime }: { runtime: FactoryRuntime })
       </section>
       <div className="manufacturing-workspace">
       <main className="manufacturing-main">
-        <div className="manufacturing-title"><div><p>製造ライン</p><h1>製造工場</h1></div><span data-running={state.running}>{state.running ? '● 稼働中' : started ? '● 一時停止中' : '● 停止中'}</span></div>
+        <div className="manufacturing-title"><div><p>製造ライン</p><h1>製造工場</h1></div><span data-running={state.running} role="status">● {status}</span></div>
         <div className="manufacturing-layout">
           <section className="manufacturing-panel manufacturing-factory" aria-labelledby="factory-title">
             <div className="manufacturing-panel-heading"><h2 id="factory-title">製造機械</h2><span>製造時間 {productionTicks} Tick / 個</span></div>
@@ -59,9 +62,13 @@ export function ManufacturingPrototype({ runtime }: { runtime: FactoryRuntime })
           </section>
           <aside className="manufacturing-panel manufacturing-controls">
             <div className="manufacturing-panel-heading"><h2>稼働設定</h2></div>
-            <p>部品倉庫への依頼：{search.order.id} · {search.order.requiredWeight} kg 以上</p>
+            <p>{search ? `部品倉庫への依頼：${search.order.id} · ${search.order.requiredWeight} kg 以上` : '倉庫の準備完了後に部品を依頼します。'}</p>
             <p>直近の受取：{lastDelivery ? `${lastDelivery.orderId} · 棚 ${lastDelivery.index} · ${lastDelivery.weight} kg` : 'まだ届いていません'}</p>
             <p><a className="manufacturing-map-link" href={`${import.meta.env.BASE_URL}map/?view=warehouse`}>部品倉庫へ</a></p>
+            {sortingError && <div className="manufacturing-sorting-error" role="alert">
+              <pre>{preparation.detail}</pre>
+              <a className="manufacturing-map-link" href={`${import.meta.env.BASE_URL}map/?view=sorting`}>sorting.py を編集</a>
+            </div>}
             {(line.report.status === 'failed' || (line.report.status === 'finished' && !line.report.verified)) &&
               <p role="alert">倉庫で部品を確定できませんでした。部品倉庫で探索結果を確認してください。</p>}
             <label>再生速度<select aria-label="再生速度" value={speed} onChange={event => {
@@ -70,7 +77,7 @@ export function ManufacturingPrototype({ runtime }: { runtime: FactoryRuntime })
             }}>{conveyorSpeeds.map(value => <option key={value} value={value}>{value}×</option>)}</select></label>
             <div className="manufacturing-buttons">
               <button type="button" className="manufacturing-primary" onClick={line.toggle}>
-                {state.running ? '一時停止' : started ? '再開' : '開始'}</button>
+                {preparing ? '仕分けを中止' : sortingError ? '再試行' : state.running ? '一時停止' : started ? '再開' : '開始'}</button>
               <button type="button" onClick={line.reset}>リセット</button>
             </div>
           </aside>

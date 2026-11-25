@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { runSortingCase } from './runSortingCase'
+import { runSortingCase, runSortingInput } from './runSortingCase'
 import type { SortingCommand, SortingEvent } from './sortingProtocol'
+import { createPythonSupply } from '../manufacturing/pythonSupply'
 
 class TestWorker {
   static instances: TestWorker[] = []
@@ -48,6 +49,19 @@ it.each(['exception', 'invalid-result'] as const)('distinguishes %s from wrong a
   TestWorker.instances[0].emit({ type: 'ready' })
   TestWorker.instances[0].emit({ type: 'failed', reason, detail: 'test failure' })
   await expect(result).resolves.toMatchObject({ status: reason, detail: 'test failure' })
+})
+
+it('returns the validated output for a single startup run while preserving duplicate weights in the warehouse', async () => {
+  const input = [3, 2, 1, 3, 1, 4, 6, 7, 4, 8, 9, 9, 8, 6, 5, 3]
+  const output = [1, 1, 2, 3, 3, 3, 4, 4, 5, 6, 6, 7, 8, 8, 9, 9]
+  const result = runSortingInput(input, 'def sort_parts(a): return sorted(a)', new AbortController().signal)
+  const worker = TestWorker.instances[0]
+  expect(worker.postMessage.mock.calls[0][0]).toMatchObject({ input, sampleCount: 1 })
+  worker.emit({ type: 'ready' })
+  worker.emit({ type: 'finished', samples: [{ ms: 2, output }] })
+  const sorted = await result
+  expect(sorted).toEqual({ status: 'passed', ms: 2, output })
+  if (sorted.status === 'passed') expect(createPythonSupply(16, 42, sorted.output).search.weights).toEqual(output)
 })
 
 it('terminates unresponsive workers and can cancel and restart using new workers', async () => {

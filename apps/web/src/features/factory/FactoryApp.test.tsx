@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { initialPythonCode } from '../../factory/warehouse/initialPythonCode'
+import { defaultSupplySeed, generateSupplyWeights } from '../manufacturing/pythonSupply'
 import type { SortingCommand, SortingEvent } from '../sorting/sortingProtocol'
 import { FactoryApp } from './FactoryApp'
 
@@ -95,7 +96,16 @@ it('coalesces edits, saves each facility separately and restores both drafts on 
 it('restores the warehouse draft independently of the active and queued factory code', async () => {
   const postMessage = vi.fn()
   vi.stubGlobal('Worker', class {
-    postMessage = postMessage
+    onmessage: ((event: MessageEvent<SortingEvent>) => void) | null = null
+    postMessage(message: SortingCommand | { type: 'run' }) {
+      if ('input' in message) {
+        this.onmessage?.(new MessageEvent('message', { data: { type: 'ready' } }))
+        const output = [...message.input].sort((a, b) => a - b)
+        this.onmessage?.(new MessageEvent('message', { data: { type: 'finished', samples: [{ ms: 1, output }] } }))
+      } else {
+        postMessage(message)
+      }
+    }
     terminate() {}
   })
   const code = '# saved warehouse draft\nresult = 0'
@@ -148,6 +158,123 @@ it('allows both editors to be used when localStorage access throws', async () =>
   window.dispatchEvent(new Event('pagehide'))
   expect(editor('python').state.doc.toString()).toBe('# warehouse without storage')
   expect(editor('sorting').state.doc.toString()).toBe('# sorting without storage')
+})
+
+it('prepares the selected capacity from a single startup snapshot and keeps the factory across screens and pauses', async () => {
+  vi.useFakeTimers()
+  await act(async () => root.render(<FactoryApp />))
+  await click('[data-facility="warehouse"] a')
+  const size = container.querySelector<HTMLSelectElement>('.factory-warehouse select')!
+  await act(async () => {
+    size.value = '64'
+    size.dispatchEvent(new Event('change', { bubbles: true }))
+  })
+  expect(container.querySelector('#manufacturing-warehouse + span')?.textContent).toBe('注文待ち')
+  await click('.factory-warehouse a[href="/map/"]')
+  await click('[data-facility="sorting"] a')
+  const sortCode = 'def sort_parts(a):\n    return sorted(a)\n'
+  await edit(editor('sorting'), sortCode)
+  await click('.sorting a[href="/map/"]')
+  await act(async () => {
+    const button = container.querySelector<HTMLButtonElement>('.map-run-control')!
+    button.click()
+    button.click()
+  })
+  const state = () => container.querySelector('.map-live-status')?.textContent?.trim()
+  const tick = () => container.querySelector('.map-header-status > span')?.textContent
+  expect(state()).toBe('仕分け準備中')
+  expect(container.querySelector('.map-process')?.textContent).not.toContain('ORD-001')
+  expect(SortingWorker.instances).toHaveLength(1)
+  const preparation = SortingWorker.instances[0]
+  const [command] = preparation.postMessage.mock.calls[0]
+  const expected = generateSupplyWeights(defaultSupplySeed, 64)
+  expect(command).toEqual({ code: sortCode, input: expect.any(Array), sampleCount: 1 })
+  expect(command.input).not.toEqual(expected)
+  expect([...command.input].sort((a, b) => a - b)).toEqual(expected)
+  await act(async () => vi.advanceTimersByTime(12_000))
+  expect(tick()).toBe('0 Tick')
+
+  await click('[data-facility="sorting"] a')
+  const nextDraft = '# only the next startup\n' + sortCode
+  await edit(editor('sorting'), nextDraft)
+  await click('.sorting .manufacturing-primary')
+  const trial = SortingWorker.instances[1]
+  expect(trial.postMessage.mock.calls[0][0]).toMatchObject({ code: nextDraft, sampleCount: 3 })
+  await click('.sorting .manufacturing-buttons button:last-child')
+  expect(trial.terminate).toHaveBeenCalledOnce()
+  expect(preparation.terminate).not.toHaveBeenCalled()
+  await click('.sorting a[href="/map/"]')
+  expect(state()).toBe('仕分け準備中')
+  await act(async () => {
+    preparation.emit({ type: 'ready' })
+    preparation.emit({ type: 'finished', samples: [{ ms: 0.5, output: expected }] })
+  })
+  expect(state()).toBe('稼働中')
+  expect(container.querySelector('.map-preparation-status')?.textContent).toContain('準備完了')
+  expect(tick()).toBe('0 Tick')
+  expect(container.querySelector('.map-process')?.textContent).toContain('ORD-001')
+  expect(SortingWorker.instances[2].postMessage.mock.calls[0][0]).toMatchObject({ type: 'run', n: 64, code: initialPythonCode })
+  await click('.map-run-control')
+  expect(state()).toBe('一時停止中')
+  await click('[data-facility="sorting"] a')
+  await edit(editor('sorting'), '# edit while paused\n' + sortCode)
+  await click('.sorting a[href="/map/"]')
+  expect(state()).toBe('一時停止中')
+  await click('.map-run-control')
+  expect(state()).toBe('稼働中')
+  expect(SortingWorker.instances).toHaveLength(3)
+  expect(tick()).toBe('0 Tick')
+  await click('[data-facility="factory"] a')
+  await click('.manufacturing-buttons button:last-child')
+  await click('.manufacturing-primary')
+  expect(SortingWorker.instances[3].postMessage.mock.calls[0][0]).toEqual({
+    code: '# edit while paused\n' + sortCode, input: command.input, sampleCount: 1,
+  })
+})
+
+it('cancels startup, rejects corrupt weights and retries with the edited sorting.py', async () => {
+  await act(async () => root.render(<FactoryApp />))
+  const toggle = () => click('.map-run-control')
+  const state = () => container.querySelector('.map-live-status')?.textContent?.trim()
+  await toggle()
+  const canceled = SortingWorker.instances[0]
+  const firstInput = canceled.postMessage.mock.calls[0][0].input
+  const staleReply = canceled.onmessage!
+  await toggle()
+  expect(state()).toBe('停止中')
+  expect(canceled.terminate).toHaveBeenCalledOnce()
+  await act(async () => staleReply(new MessageEvent('message', { data: { type: 'ready' } })))
+  expect(state()).toBe('停止中')
+
+  await toggle()
+  const rejected = SortingWorker.instances[1]
+  expect(rejected.postMessage.mock.calls[0][0].input).toEqual(firstInput)
+  const output = [...firstInput].sort((a, b) => a - b)
+  await act(async () => {
+    rejected.emit({ type: 'ready' })
+    rejected.emit({ type: 'finished', samples: [{ ms: 1, output: [output[1], ...output.slice(1)] }] })
+  })
+  expect(state()).toBe('仕分けエラー')
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain('要素または順序')
+  expect(container.querySelector('.map-run-control')?.textContent).toBe('再試行')
+  expect(container.querySelector('.map-header-status > span')?.textContent).toBe('0 Tick')
+  expect(container.querySelector('.map-process')?.textContent).not.toContain('ORD-001')
+  expect(SortingWorker.instances).toHaveLength(2)
+
+  await click('.map-sorting-error a')
+  const fixed = '# fixed warehouse sort\ndef sort_parts(a):\n    return sorted(a)'
+  await edit(editor('sorting'), fixed)
+  await click('.sorting a[href="/map/"]')
+  await toggle()
+  const retry = SortingWorker.instances[2]
+  expect(retry.postMessage.mock.calls[0][0]).toEqual({ input: firstInput, code: fixed, sampleCount: 1 })
+  await act(async () => {
+    retry.emit({ type: 'ready' })
+    retry.emit({ type: 'finished', samples: [{ ms: 1, output }] })
+  })
+  expect(state()).toBe('稼働中')
+  expect(container.querySelector('.map-sorting-error')).toBeNull()
+  expect(SortingWorker.instances).toHaveLength(4)
 })
 
 it('shares the warehouse draft and runs the sorting draft independently of window actions and the factory', async () => {

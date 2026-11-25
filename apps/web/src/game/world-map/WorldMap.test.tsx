@@ -52,7 +52,8 @@ it('renders the production and support facilities and exposes only available one
       ['warehouse', 'factory'], ['factory', 'shipping'],
     ])
     expect(routes.every(route => route.querySelector('.map-direction') && route.querySelectorAll('.map-dock').length === 2)).toBe(true)
-    expect(scene.querySelectorAll('.map-future-route')).toHaveLength(2)
+    expect(scene.querySelectorAll('.map-future-route')).toHaveLength(1)
+    expect(scene.querySelector('.map-sorting-route[data-from="sorting"][data-to="warehouse"] .map-direction')).not.toBeNull()
     expect(scene.querySelector('.map-analysis-route')?.getAttribute('data-to')).toBe('analysis')
   } finally {
     await act(async () => root.unmount())
@@ -61,10 +62,10 @@ it('renders the production and support facilities and exposes only available one
   }
 })
 
-it('retains the directed production flow and both expansion branches on narrow screens', () => {
+it('retains the directed production flow, startup sorting and logistics branch on narrow screens', () => {
   const topology = (layout: typeof wideSite) => layout.connections.map(({ from, to, kind }) => [from[0], to[0], kind])
   expect(topology(narrowSite).filter(([, , kind]) => kind !== 'future')).toEqual(topology(wideSite).filter(([, , kind]) => kind !== 'future'))
-  expect(topology(narrowSite).filter(([, , kind]) => kind === 'future').map(([, to]) => to)).toEqual(['sorting', 'logistics'])
+  expect(topology(narrowSite).filter(([, , kind]) => kind === 'future').map(([, to]) => to)).toEqual(['logistics'])
 })
 
 it('limits the event window and displays confirmed measurements, receipts and Python failures', async () => {

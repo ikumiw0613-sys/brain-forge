@@ -24,16 +24,16 @@ function currentScreen(): keyof typeof titles {
 const titles = { manufacturing: '製造ライン', warehouse: '部品倉庫', benchmark: '性能試験', sorting: '仕分け施設', map: '工場拠点マップ' }
 
 export function FactoryApp() {
-  const runtime = useFactoryRuntime()
-  const workspace = useWindowLayout()
   const [sortingDraft, setSortingDraft] = usePythonDraft('sorting', initialSortingCode)
+  const runtime = useFactoryRuntime(sortingDraft)
+  const workspace = useWindowLayout()
   const [screen, setScreen] = useState(currentScreen)
   const { line, search, lastDelivery, started } = runtime.line
   const dashboard = screen === 'map' ? getManufacturingDashboard(line) : undefined
   const warehouseEditor = {
     draft: runtime.draft, onChange: runtime.setDraft, onApply: () => runtime.line.applyCode(runtime.draft),
-    program: runtime.line.program, report: runtime.line.report, n: search.weights.length,
-    target: search.order.requiredWeight, measurements: search.log,
+    program: runtime.line.program, report: runtime.line.report, n: runtime.line.warehouseSize,
+    target: search?.order.requiredWeight ?? null, measurements: search?.log ?? [],
   }
 
   useEffect(() => {
@@ -70,10 +70,11 @@ export function FactoryApp() {
           : screen === 'benchmark' ? <BenchmarkScreen initialCode={runtime.draft} />
           : screen === 'sorting' ? <SortingScreen code={sortingDraft} onChange={setSortingDraft}
             workspace={workspace} warehouseEditor={<MapPythonEditor data={warehouseEditor} />} />
-          : <MapScreen measurementIndex={search.pending?.index ?? null} running={line.running}
+          : <MapScreen measurementIndex={search?.pending?.index ?? null} running={line.running}
             workspace={workspace}
-            machineStatus={line.status} progress={line.progress} delivery={lastDelivery}
-            started={started} onToggleRunning={runtime.line.toggle} elapsedTicks={line.tick} completed={line.completed} order={search.order}
+            machineStatus={started ? line.status : undefined} progress={line.progress} delivery={lastDelivery}
+            started={started} preparation={runtime.line.preparation} onToggleRunning={runtime.line.toggle}
+            elapsedTicks={line.tick} completed={line.completed} order={search?.order}
             editor={warehouseEditor}
             revenue={dashboard?.revenue} revenueRate={dashboard?.revenueRate} windowTicks={dashboard?.windowTicks} />}
     </div>

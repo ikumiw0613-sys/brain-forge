@@ -16,7 +16,7 @@ export function SiteConnections({ layout, delivery }: { layout: SiteLayout; deli
             <polyline className="map-track-edge" points={path} />
             <polyline className="map-track-bed" points={path} />
             <polyline className="map-track-center" points={path} />
-            {connection.kind === 'main' && <path className="map-direction" d="M-5-5 2 0-5 5 M3-5 10 0 3 5"
+            {(connection.kind === 'main' || connection.kind === 'sorting') && <path className="map-direction" d="M-5-5 2 0-5 5 M3-5 10 0 3 5"
               transform={`translate(${(x1 + x2) / 2} ${(y1 + y2) / 2}) rotate(${angle})`} />}
             {[points[0], points[points.length - 1]].map(([x, y]) => <circle key={`${x},${y}`} className="map-dock" cx={x} cy={y} r="4" />)}
             {delivery && connection.from[0] === 'warehouse' && connection.to[0] === 'factory' &&
