@@ -9,6 +9,7 @@ export const workspaceWindows = {
 }
 
 export type WindowId = keyof typeof workspaceWindows
+export type WorkspaceScope = 'map' | 'sorting'
 export type Bounds = { width: number; height: number }
 export type WindowRect = Bounds & { x: number; y: number }
 export type ResizeDirection = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw'
@@ -33,11 +34,24 @@ const limit = (value: number, min: number, max: number) => Math.max(min, Math.mi
 const minWidth = 218
 const minHeight = 155
 
-function defaultRect(id: WindowId, bounds: Bounds): WindowRect {
+function defaultRect(id: WindowId, bounds: Bounds, allPanels: boolean): WindowRect {
   const gap = 8
   const side = 16
   const height = Math.min(310, Math.round(bounds.height * .45))
   const y = bounds.height - height - 24
+  if (allPanels) {
+    const available = bounds.width - 2 * side - 3 * gap
+    const extra = Math.max(0, available - 4 * minWidth)
+    const editorWidth = minWidth + Math.floor(extra * .35)
+    const eventsWidth = minWidth + Math.floor(extra * .15)
+    const { x, width } = {
+      python: { x: side, width: editorWidth },
+      sorting: { x: side + editorWidth + gap, width: editorWidth },
+      events: { x: side + 2 * (editorWidth + gap), width: eventsWidth },
+      performance: { x: side + 2 * editorWidth + eventsWidth + 3 * gap, width: available - 2 * editorWidth - eventsWidth },
+    }[id]
+    return { x, y, width, height }
+  }
   if (id === 'sorting') {
     const width = Math.min(640, Math.round(bounds.width * .46))
     return { x: bounds.width - width - side, y, width, height }
@@ -73,9 +87,9 @@ export function resizeWindow(rect: WindowRect, direction: ResizeDirection, dx: n
   return { x, y, width: nextRight - x, height: nextBottom - y }
 }
 
-export function windowRect(id: WindowId, state: WindowState, bounds: Bounds): WindowRect {
+export function windowRect(id: WindowId, state: WindowState, bounds: Bounds, allPanels = false): WindowRect {
   if (state.isMaximized) return { x: 0, y: 0, ...bounds }
-  return fitWindow(state.rect ?? defaultRect(id, bounds), bounds)
+  return fitWindow(state.rect ?? defaultRect(id, bounds, allPanels), bounds)
 }
 
 type WindowAction = { type: 'reset' } | ({ id: WindowId } & (
@@ -105,7 +119,7 @@ function updateWindow(layout: WindowLayout, action: WindowAction): WindowLayout 
 
 export function useWindowLayout() {
   const [windows, dispatch] = useReducer(updateWindow, initialLayout, fallback => loadWindowLayout(fallback) ?? fallback)
-  const [tabs, setTabs] = useState<Partial<Record<WindowId, WindowId | null>>>({})
+  const [tabs, setTabs] = useState<Partial<Record<WorkspaceScope, WindowId | null>>>({})
   const [resetVersion, setResetVersion] = useState(0)
   const previous = useRef(windows)
   useLayoutEffect(() => {

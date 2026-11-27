@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { fitWindow, resizeWindow, windowRect } from './windowLayout'
+import { fitWindow, resizeWindow, windowIds, windowRect } from './windowLayout'
 
 it.each([1440, 961])('places the default windows side by side at the bottom of a %ipx viewport', width => {
   const bounds = { width, height: 680 }
@@ -13,6 +13,17 @@ it.each([1440, 961])('places the default windows side by side at the bottom of a
   expect(python.x + python.width).toBeLessThan(events.x)
   expect(events.x + events.width).toBeLessThan(performance.x)
   expect(performance.x + performance.width).toBeLessThan(bounds.width)
+})
+
+it.each([1440, 961])('fits both editors and the other map windows without overlap at %ipx', width => {
+  const bounds = { width, height: 680 }
+  const state = { rect: null, zIndex: 1, isOpen: true, isMaximized: false }
+  const rects = windowIds.map(id => windowRect(id, state, bounds, true))
+  for (const [index, rect] of rects.entries()) {
+    expect(rect.width).toBeGreaterThanOrEqual(218)
+    expect(rect.y + rect.height).toBe(bounds.height - 24)
+    expect(rect.x + rect.width).toBeLessThan(rects[index + 1]?.x ?? width)
+  }
 })
 
 it('fits saved windows as the viewport shrinks and clamps resize to the remaining space', () => {

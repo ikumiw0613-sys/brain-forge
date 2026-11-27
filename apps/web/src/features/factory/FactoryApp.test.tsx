@@ -342,16 +342,18 @@ it('shares the warehouse draft and runs the sorting draft independently of windo
   await act(async () => root.render(<FactoryApp />))
   const originalTick = container.querySelector('.map-header-status')?.textContent
   const warehouseCode = '# warehouse draft\nresult = 0'
+  const code = 'def sort_parts(a):\n    return sorted(a)\n'
+  expect(container.querySelector<HTMLElement>('#workspace-sorting')?.hidden).toBe(false)
   await edit(editor('python'), warehouseCode)
+  await edit(editor('sorting'), code)
   await click('[data-facility="sorting"] a')
   expect(container.querySelector('h1')?.textContent).toBe('仕分け施設')
   expect(container.querySelectorAll('.workspace-window:not([hidden])')).toHaveLength(2)
   expect(editor('python').state.doc.toString()).toBe(warehouseCode)
+  expect(editor('sorting').state.doc.toString()).toBe(code)
   expect(document.title).toBe('Brain Forge | 仕分け施設')
 
-  const code = 'def sort_parts(a):\n    return sorted(a)\n'
   const nextDraft = '# next trial\n' + code
-  await edit(editor('sorting'), code)
   await click('.sorting .manufacturing-primary')
   const firstWorker = SortingWorker.instances[0]
   await act(async () => firstWorker.emit({ type: 'ready' }))
@@ -390,6 +392,7 @@ it('shares the warehouse draft and runs the sorting draft independently of windo
   await click('.manufacturing-map-link')
   expect(container.querySelector('.map-header-status')?.textContent).toBe(originalTick)
   expect(editor('python').state.doc.toString()).toBe(warehouseCode)
+  expect(editor('sorting').state.doc.toString()).toBe(nextDraft)
   await click('[data-facility="sorting"] a')
   expect(editor('sorting').state.doc.toString()).toBe(nextDraft)
   expect(SortingWorker.instances).toHaveLength(5)
@@ -400,8 +403,11 @@ it('switches the mobile editor tabs while preserving both drafts', async () => {
     matches: query !== '(min-width: 961px)', addEventListener() {}, removeEventListener() {},
   }))
   await act(async () => root.render(<FactoryApp />))
-  await click('[data-facility="sorting"] a')
   const visible = () => Array.from(container.querySelectorAll('.workspace-window:not([hidden])'), node => node.id)
+  expect(visible()).toEqual(['workspace-sorting'])
+  await click('[data-window-button="events"]')
+  expect(visible()).toEqual(['workspace-events'])
+  await click('[data-facility="sorting"] a')
   expect(visible()).toEqual(['workspace-sorting'])
   await edit(editor('sorting'), '# sorting mobile draft')
   await click('[data-window-button="python"]')
@@ -413,5 +419,9 @@ it('switches the mobile editor tabs while preserving both drafts', async () => {
   await click('[aria-label="sorting.pyを閉じる"]')
   expect(visible()).toEqual([])
   await click('.manufacturing-map-link')
+  expect(visible()).toEqual(['workspace-events'])
+  await click('[data-window-button="sorting"]')
+  expect(visible()).toEqual(['workspace-sorting'])
+  expect(editor('sorting').state.doc.toString()).toBe('# sorting mobile draft')
   expect(editor('python').state.doc.toString()).toBe('# warehouse mobile draft')
 })

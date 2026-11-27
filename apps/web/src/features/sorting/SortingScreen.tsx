@@ -1,13 +1,12 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { PythonCodeEditor } from '../../factory/python/PythonCodeEditor'
 import { Workspace } from '../../game/workspace/Workspace'
 import type { WorkspaceLayout } from '../../game/workspace/windowLayout'
 import { runSortingCase } from './runSortingCase'
+import { SortingEditor } from './SortingEditor'
 import { partsPerMinute, repetitions, sortingKinds, sortingSizes, timingFloorMs } from './sortingCases'
 import type { SortingCase, SortingKind } from './sortingCases'
 import type { SortingResult } from './sortingProtocol'
-import './sorting.css'
 
 const DevSortingJudge = __DEV_SORTING_JUDGE__ ? lazy(() => import('./DevSortingJudge')) : null
 
@@ -123,15 +122,13 @@ export function SortingScreen({ code, onChange, workspace, warehouseEditor }: {
         <div className="manufacturing-title"><h1>仕分け施設</h1><span>利用可能 · 学習モード</span></div>
         <p className="sorting-instructions" id="sorting-code-help"><code>sorting.py</code> の <code>sort_parts(a)</code> に整数リストが渡されます。昇順に並べ替えたリストを返してください。</p>
         <p className="sorting-instructions">工場の初期仕分けでは、起動時点の下書きを使います。</p>
-        <Workspace layout={workspace} defaultTab="sorting" panels={{
+        <Workspace layout={workspace} scope="sorting" defaultTab="sorting" panels={{
           python: warehouseEditor,
-          sorting: <div className="sorting-editor">
-            <PythonCodeEditor code={code} onChange={onChange} label="sorting.py" describedBy="sorting-code-help" />
-          </div>,
+          sorting: <SortingEditor code={code} onChange={onChange} describedBy="sorting-code-help" />,
         }} />
         <div className="sorting-controls">
           <section className="manufacturing-panel sorting-panel" aria-labelledby="sorting-test-title">
-            <h2 id="sorting-test-title">ソート性能試験</h2>
+            <h2 id="sorting-test-title">ソート性能試験（Pyodide）</h2>
             <fieldset disabled={running}>
               <legend>試験条件</legend>
               <label>入力件数<select value={size} onChange={event => setSize(event.target.value)}>

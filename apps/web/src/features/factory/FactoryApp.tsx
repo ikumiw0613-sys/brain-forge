@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from 'react'
 import type { MouseEvent } from 'react'
 import { BenchmarkScreen } from '../benchmark/BenchmarkScreen'
+import { SortingEditor } from '../sorting/SortingEditor'
 import { initialSortingCode, SortingScreen } from '../sorting/SortingScreen'
 import { ManufacturingPrototype } from '../../game/manufacturing/ManufacturingPrototype'
 import { getManufacturingDashboard } from '../../factory/manufacturing/engine'
@@ -76,6 +77,7 @@ export function FactoryApp() {
             started={started} preparation={runtime.line.preparation} onToggleRunning={runtime.line.toggle}
             elapsedTicks={line.tick} completed={line.completed} order={search?.order}
             editor={warehouseEditor}
+            sortingEditor={<SortingEditor code={sortingDraft} onChange={setSortingDraft} />}
             revenue={dashboard?.revenue} revenueRate={dashboard?.revenueRate} windowTicks={dashboard?.windowTicks} />}
     </div>
   )

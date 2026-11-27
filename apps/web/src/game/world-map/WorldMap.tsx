@@ -1,4 +1,5 @@
 import { useId, useState, useSyncExternalStore } from 'react'
+import type { ReactNode } from 'react'
 import { dashboardWindowTicks, productionTicks } from '../../factory/manufacturing/engine'
 import type { MachineStatus } from '../../factory/manufacturing/engine'
 import type { WarehousePreparation } from '../../factory/runtime/useManufacturingLine'
@@ -72,11 +73,12 @@ type MapActivity = {
   completed?: number
   order?: { readonly id: string; readonly requiredWeight: number }
   editor?: MapEditorData
+  sortingEditor?: ReactNode
   workspace?: WorkspaceLayout
 }
 
 export function WorldMap({ measurementIndex = null, running = false, started = false, preparation, onToggleRunning, machineStatus,
-  progress = 0, delivery = null, revenue = 0, revenueRate = 0, windowTicks = 0, elapsedTicks, completed, order, editor, workspace }: MapActivity) {
+  progress = 0, delivery = null, revenue = 0, revenueRate = 0, windowTicks = 0, elapsedTicks, completed, order, editor, sortingEditor, workspace }: MapActivity) {
   const narrow = useSyncExternalStore(subscribeToViewport, isNarrowViewport)
   const layout = narrow ? narrowSite : wideSite
   const grid = useId()
@@ -226,8 +228,10 @@ export function WorldMap({ measurementIndex = null, running = false, started = f
             </g>
           })}
         </svg>
-        {editor && workspace ? <Workspace layout={workspace} titleActions={{ python: <MapPythonActions {...editor} /> }} panels={{
+        {editor && workspace ? <Workspace layout={workspace} defaultTab={sortingEditor ? 'sorting' : 'python'}
+          titleActions={{ python: <MapPythonActions {...editor} /> }} panels={{
           python: <MapPythonEditor data={editor} />,
+          ...(sortingEditor ? { sorting: sortingEditor } : {}),
           events: <MapEventLog orderId={order?.id} started={started} measurements={editor.measurements} delivery={delivery}
             status={machineStatus} completed={completed} report={editor.report} />,
           performance,

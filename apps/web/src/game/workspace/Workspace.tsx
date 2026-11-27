@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { KeyboardEvent, PointerEvent, ReactNode } from 'react'
 import { fitWindow, resizeWindow, windowIds, windowRect, workspaceWindows } from './windowLayout'
-import type { Bounds, ResizeDirection, WindowId, WindowRect, WorkspaceLayout } from './windowLayout'
+import type { Bounds, ResizeDirection, WindowId, WindowRect, WorkspaceLayout, WorkspaceScope } from './windowLayout'
 import './workspace.css'
 
 const desktopQuery = '(min-width: 961px)'
@@ -13,14 +13,15 @@ const subscribeToDesktop = (update: () => void) => {
 const isDesktop = () => window.matchMedia?.(desktopQuery).matches ?? true
 const frameId = (id: WindowId) => `workspace-${id}`
 
-export function Workspace({ layout: { windows, dispatch, tabs, setTabs, resetLayout, resetVersion }, panels, titleActions, defaultTab = 'python' }: {
+export function Workspace({ layout: { windows, dispatch, tabs, setTabs, resetLayout, resetVersion }, panels, titleActions, defaultTab = 'python', scope = 'map' }: {
   layout: WorkspaceLayout
   panels: Partial<Record<WindowId, ReactNode>>
   titleActions?: Partial<Record<WindowId, ReactNode>>
   defaultTab?: WindowId
+  scope?: WorkspaceScope
 }) {
   const ids = windowIds.filter(id => id in panels)
-  const selectedTab = tabs[defaultTab]
+  const selectedTab = tabs[scope]
   const activeTab = selectedTab === undefined ? defaultTab : selectedTab
   const desktop = useSyncExternalStore(subscribeToDesktop, isDesktop)
   const surface = useRef<HTMLDivElement>(null)
@@ -28,7 +29,7 @@ export function Workspace({ layout: { windows, dispatch, tabs, setTabs, resetLay
   const [bounds, setBounds] = useState<Bounds>({ width: 0, height: 0 })
 
   function selectTab(id: WindowId | null) {
-    setTabs(current => ({ ...current, [defaultTab]: id }))
+    setTabs(current => ({ ...current, [scope]: id }))
   }
 
   useLayoutEffect(() => {
@@ -63,7 +64,7 @@ export function Workspace({ layout: { windows, dispatch, tabs, setTabs, resetLay
       <div className="workspace-surface" ref={surface}>
         {ids.map(id => {
           const item = windows[id]
-          const rect = windowRect(id, item, bounds)
+          const rect = windowRect(id, item, bounds, ids.length === windowIds.length)
           return <WindowFrame key={id} id={id} desktop={desktop} rect={rect} bounds={bounds} resetVersion={resetVersion}
             titleActions={titleActions?.[id]}
             open={desktop ? item.isOpen : activeTab === id}
