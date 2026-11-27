@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { DevSortingBenchmark } from './DevSortingBenchmark'
 import {
   parseSortingJudgeError, parseSortingJudgeResult, sortingJudgeCaseLabels, sortingJudgeErrorLabels,
   sortingJudgePath, sortingJudgeReasonLabels,
@@ -79,7 +80,7 @@ export default function DevSortingJudge({ code }: { code: string }) {
     : error ? '通信エラー'
     : running ? `採点中 · 全 ${Object.keys(sortingJudgeCaseLabels).length} ケースの結果を待っています` : '採点前'
 
-  return (
+  return (<>
     <section className="manufacturing-panel sorting-panel" aria-labelledby="sorting-judge-title">
       <h2 id="sorting-judge-title">サーバー採点（開発用）</h2>
       <div className="manufacturing-buttons">
@@ -102,5 +103,6 @@ export default function DevSortingJudge({ code }: { code: string }) {
         </table>
       </div>}
     </section>
-  )
+    <DevSortingBenchmark code={code} />
+  </>)
 }

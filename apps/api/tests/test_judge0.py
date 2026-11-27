@@ -15,7 +15,7 @@ from pydantic import ValidationError
 from app.core.config import Settings
 from app.main import app
 from app.schemas.judge0 import MAX_SOURCE_CHARACTERS
-from app.services import judge0, sorting_judge
+from app.services import judge0, sorting_benchmark, sorting_judge
 
 _PATH = "/api/v1/dev/judge0"
 _BASE_URL = "https://judge.example/judge0"
@@ -427,6 +427,149 @@ def _judge_sorting(client, *, source=_SORTING_SOURCE, headers=_AUTH):
 
 def _sorting_result(values):
     return {"status_id": 3, "stdout": _encode(json.dumps({"kind": "result", "values": values}))}
+
+
+_BENCHMARK_PATH = f"{_PATH}/sorting/benchmark"
+
+
+class BenchmarkTransport:
+    def __init__(self, correctness=sorted, measure=None):
+        self.correctness = correctness
+        self.measure = measure or self.completed
+        self.jobs = []
+
+    @staticmethod
+    def completed(_parts):
+        return {
+            "status_id": 3, "time": "0.021",
+            "stdout": _encode(json.dumps({"python_version": "3.11.2", "outcome": "completed", "samples": [9, 1, 3, 2, 5]})),
+        }
+
+    def __call__(self, request):
+        if request.method == "POST":
+            payload = json.loads(request.content)
+            assert (payload["cpu_time_limit"], payload["wall_time_limit"], payload["enable_network"]) == (2, 5, False)
+            source = b64decode(payload["source_code"]).decode()
+            stdin = json.loads(b64decode(payload["stdin"]))
+            self.jobs.append((source, stdin))
+        if request.url.path.endswith(_SUBMISSION_TOKEN):
+            source, stdin = self.jobs[-1]
+            if source == sorting_judge._PYTHON_HARNESS:
+                result = _sorting_result(self.correctness(stdin["parts"]))
+            else:
+                assert source == sorting_benchmark._HARNESS
+                assert stdin["runs"] == 5
+                result = self.measure(stdin["parts"])
+            return httpx2.Response(503) if result is None else _submission_flow(request, iter([result]))
+        return _submission_flow(request, iter(()))
+
+
+def _benchmark(client, headers=_AUTH):
+    return client.post(_BENCHMARK_PATH, headers=headers, json={"source_code": _SORTING_SOURCE})
+
+
+def test_benchmark_job_budget_seed_and_median(open_client):
+    upstream = BenchmarkTransport()
+    with open_client(upstream) as client:
+        response = _benchmark(client)
+    assert response.status_code == 200
+    assert response.headers["Cache-Control"] == "no-store"
+    result = response.json()
+    assert result["algorithm_status"] == "completed" and result["correctness_passed"]
+    assert (result["python_version"], result["judge0_language_id"]) == ("3.11.2", _LANGUAGE_ID)
+    assert len(upstream.jobs) == 20
+    cases = result["measurements"]
+    assert [item["size"] for item in cases] == [100] * 4 + [1000] * 4 + [10000] * 4
+    for (_, stdin), item in zip(upstream.jobs[8:], cases, strict=True):
+        assert stdin["parts"] == sorting_benchmark.benchmark_input(item["size"], item["distribution"])
+        assert (item["successful_runs"], item["seed"], item["status"], item["error_message"]) == (5, 42, "completed", None)
+        assert (item["median_ms"], item["min_ms"], item["max_ms"], item["judge0_cpu_ms"]) == (3, 1, 9, 21)
+
+
+def test_benchmark_skips_incorrect_code(open_client):
+    upstream = BenchmarkTransport(correctness=lambda parts: sorted(set(parts)))
+    with open_client(upstream) as client:
+        result = _benchmark(client).json()
+    assert result["algorithm_status"] == "incorrect" and not result["correctness_passed"]
+    assert result["correctness"]["cases"][3]["reason"] == "wrong_length"
+    assert len(upstream.jobs) == 8
+    assert all(item["status"] == "not_run" and item["median_ms"] is None for item in result["measurements"])
+
+
+def test_benchmark_reports_partial_samples_and_skips_larger_inputs(open_client):
+    upstream = BenchmarkTransport(measure=lambda parts: (
+        {"status_id": 3, "stdout": _encode('{"python_version":"3.11.2","outcome":"case_time_limit","samples":[1,2]}')}
+        if parts == sorting_benchmark.benchmark_input(100, "random") else BenchmarkTransport.completed(parts)
+    ))
+    with open_client(upstream) as client:
+        result = _benchmark(client).json()
+    assert result["algorithm_status"] == "time_limit"
+    first = result["measurements"][0]
+    assert (first["successful_runs"], first["status"], first["median_ms"]) == (2, "time_limit", None)
+    assert result["measurements"][4]["error_message"] == "larger_case_skipped"
+    assert result["measurements"][2]["status"] == "completed"
+    assert len(upstream.jobs) == 18
+
+
+def test_benchmark_invalidates_scores_if_a_later_measurement_is_wrong(open_client):
+    upstream = BenchmarkTransport(measure=lambda parts: (
+        {"status_id": 3, "stdout": _encode('{"python_version":"3.11.2","outcome":"wrong_output","samples":[1]}')}
+        if len(set(parts)) <= 8 else BenchmarkTransport.completed(parts)
+    ))
+    with open_client(upstream) as client:
+        result = _benchmark(client).json()
+    assert result["correctness_passed"] and result["algorithm_status"] == "incorrect"
+    assert result["measurements"][3]["error_message"] == "wrong_output"
+    assert len(upstream.jobs) == 12
+    assert all(item["median_ms"] is None for item in result["measurements"])
+
+
+@pytest.mark.parametrize(("execution", "status", "algorithm_status", "http_status"), [
+    ({"status_id": 5, "time": "2.001"}, "time_limit", "time_limit", 200),
+    (None, "unavailable", "unavailable", 503),
+])
+def test_benchmark_reports_hard_timeout_or_outage(open_client, execution, status, algorithm_status, http_status):
+    upstream = BenchmarkTransport(measure=lambda _: execution)
+    with open_client(upstream) as client:
+        response = _benchmark(client)
+    assert response.status_code == http_status
+    result = response.json()
+    assert result["algorithm_status"] == algorithm_status
+    assert result["measurements"][0]["status"] == status
+    assert result["measurements"][0]["median_ms"] is None
+
+
+def test_benchmark_uses_same_auth_and_production_gate(open_client, monkeypatch):
+    with open_client(BenchmarkTransport()) as client:
+        assert _benchmark(client, headers={}).status_code == 401
+        assert _benchmark(client, headers={**_AUTH, "Forwarded": "for=127.0.0.1"}).status_code == 404
+        assert _BENCHMARK_PATH not in client.get("/openapi.json").json()["paths"]
+    monkeypatch.setenv("APP_ENV", "production")
+    with open_client(BenchmarkTransport()) as client:
+        assert _benchmark(client).status_code == 404
+
+
+def test_benchmark_holds_the_shared_slot_during_measurement(open_client):
+    started, finish = Event(), Event()
+    upstream = BenchmarkTransport()
+
+    async def hold_first_measurement(request):
+        if request.method == "POST" and len(upstream.jobs) == 8:
+            started.set()
+            assert await asyncio.to_thread(finish.wait, 5)
+        return upstream(request)
+
+    with open_client(hold_first_measurement) as client, ThreadPoolExecutor(max_workers=1) as pool:
+        request = pool.submit(_benchmark, client)
+        try:
+            assert started.wait(5)
+            for response in (_benchmark(client), _judge_sorting(client), _execute(client)):
+                assert response.status_code == 429
+                assert response.json() == {"detail": "judge0_busy"}
+        finally:
+            finish.set()
+        assert request.result(timeout=5).json()["algorithm_status"] == "completed"
+    assert len(upstream.jobs) == 20
 
 
 class SortingTransport:

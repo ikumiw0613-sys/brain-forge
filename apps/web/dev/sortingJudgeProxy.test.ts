@@ -4,6 +4,7 @@ import type { ClientRequest, IncomingMessage, RequestOptions, ServerResponse } f
 import { Readable } from 'node:stream'
 import type { ViteDevServer } from 'vite'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { benchmarkDistributions, sortingBenchmarkPath } from '../src/features/sorting/sortingBenchmarkProtocol'
 import { sortingJudgeCaseLabels, sortingJudgePath } from '../src/features/sorting/sortingJudgeProtocol'
 import { sortingJudgeProxy } from './sortingJudgeProxy'
 
@@ -73,6 +74,26 @@ it('adds the configured Bearer token only to its fixed loopback request and rela
   expect(call).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
     hostname: '127.0.0.1', port: 8000, path: sortingJudgePath, agent: false, method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+  }), Buffer.from(body))
+})
+
+it('applies the same loopback and token rules to benchmark results', async () => {
+  const benchmark = {
+    algorithm_status: 'completed', correctness_passed: true, correctness: report,
+    python_version: '3.11.2', judge0_language_id: 31,
+    measurements: [100, 1000, 10000].flatMap(size => Object.keys(benchmarkDistributions).map(distribution => ({
+      size, distribution, seed: 42, successful_runs: 5, requested_runs: 5, status: 'completed',
+      median_ms: 1, min_ms: 0.5, max_ms: 1.5, judge0_cpu_ms: 20, error_message: null,
+    }))),
+  }
+  const call = mockApi(200, { ...benchmark, secret: token })
+  expect((await send(mount(), { url: sortingBenchmarkPath, remoteAddress: '192.0.2.1' })).status).toBe(403)
+  const reply = await send(mount(), { url: sortingBenchmarkPath })
+  expect(reply.status).toBe(200)
+  expect(JSON.parse(reply.text)).toEqual(benchmark)
+  expect(reply.text).not.toContain(token)
+  expect(call).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+    path: sortingBenchmarkPath, hostname: '127.0.0.1', headers: expect.objectContaining({ Authorization: `Bearer ${token}` }),
   }), Buffer.from(body))
 })
 

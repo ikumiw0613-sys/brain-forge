@@ -7,6 +7,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { initialPythonCode } from '../../factory/warehouse/initialPythonCode'
 import { defaultSupplySeed, generateSupplyWeights } from '../manufacturing/pythonSupply'
 import type { SortingCommand, SortingEvent } from '../sorting/sortingProtocol'
+import { benchmarkDistributions, sortingBenchmarkPath } from '../sorting/sortingBenchmarkProtocol'
 import { sortingJudgeCaseLabels, sortingJudgePath } from '../sorting/sortingJudgeProtocol'
 import { FactoryApp } from './FactoryApp'
 
@@ -57,6 +58,57 @@ async function remount() {
   root = createRoot(container)
   await act(async () => root.render(<FactoryApp />))
 }
+
+it('keeps a single Judge0 benchmark across navigation while the factory starts with its own snapshot', async () => {
+  let finish!: (response: Response) => void
+  const fetchMock = vi.fn<typeof fetch>().mockReturnValue(new Promise(resolve => { finish = resolve }))
+  vi.stubGlobal('fetch', fetchMock)
+  await act(async () => root.render(<FactoryApp />))
+  await click('.map-run-control')
+  const preparation = SortingWorker.instances[0]
+  const startup = preparation.postMessage.mock.calls[0][0]
+  const open = async () => {
+    await click('[data-facility="sorting"] a')
+    await act(async () => vi.dynamicImportSettled())
+  }
+  await open()
+  const panel = () => container.querySelector('[aria-labelledby="sorting-benchmark-title"]')!
+  const measure = () => panel().querySelector('button')!
+  const source = 'def sort_parts(a): return sorted(a)'
+  await edit(editor('sorting'), source)
+  await act(async () => { measure().click(); measure().click() })
+  expect(fetchMock).toHaveBeenCalledExactlyOnceWith(sortingBenchmarkPath, expect.objectContaining({
+    body: JSON.stringify({ source_code: source }), headers: { 'Content-Type': 'application/json' },
+  }))
+  expect(panel().textContent).toContain('測定中')
+  await edit(editor('sorting'), '# edited while measuring\n' + source)
+  await click('.sorting a[href="/map/"]')
+  expect(container.querySelector('.map-live-status')?.textContent).toBe('仕分け準備中')
+  expect(preparation.postMessage).toHaveBeenCalledExactlyOnceWith(startup)
+  expect(preparation.terminate).not.toHaveBeenCalled()
+  expect(SortingWorker.instances).toHaveLength(1)
+  await open()
+  expect(measure().disabled).toBe(true)
+  expect(panel().textContent).toContain('送信時の下書き')
+  const cases = Object.keys(sortingJudgeCaseLabels).map(name => ({ name, passed: true, reason: null }))
+  const measurements = [100, 1000, 10000].flatMap(size => Object.keys(benchmarkDistributions).map(distribution => ({
+    size, distribution, seed: 42, successful_runs: 5, requested_runs: 5, status: 'completed',
+    median_ms: 0.42, min_ms: 0.1, max_ms: 1, judge0_cpu_ms: 20, error_message: null,
+  })))
+  Object.assign(measurements[11], {
+    status: 'time_limit', successful_runs: 2, median_ms: null, min_ms: null, max_ms: null, error_message: 'case_time_limit',
+  })
+  await act(async () => finish(new Response(JSON.stringify({
+    algorithm_status: 'time_limit', correctness_passed: true, python_version: '3.11.2', judge0_language_id: 31,
+    correctness: { status: 'passed', passed_cases: 8, total_cases: 8, cases }, measurements,
+  }))))
+  expect(panel().textContent).toContain('8/8 ケース合格')
+  expect(panel().textContent).toContain('0.42')
+  const timeout = panel().querySelector('tbody tr:last-child')!
+  expect(timeout.textContent).toContain('タイムアウト・測定不成立')
+  expect(timeout.children[3].textContent).toBe('—')
+  expect(measure().disabled).toBe(false)
+})
 
 it('keeps server judging in flight across edits and navigation without changing the local trial or factory startup', async () => {
   let finishRequest!: (response: Response) => void

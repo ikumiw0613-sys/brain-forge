@@ -6,6 +6,7 @@ import { parseEnv } from 'node:util'
 import type { Plugin } from 'vite'
 import { parseSortingJudgeResult, sortingJudgePath } from '../src/features/sorting/sortingJudgeProtocol.ts'
 import type { SortingJudgeError } from '../src/features/sorting/sortingJudgeProtocol.ts'
+import { parseSortingBenchmarkResult, sortingBenchmarkPath } from '../src/features/sorting/sortingBenchmarkProtocol.ts'
 
 // Match FastAPI's request limit, including the longest JSON escape for a Unicode character.
 const maxBodyBytes = 12 * 10_000 + 1024
@@ -65,10 +66,10 @@ async function readLimited(message: IncomingMessage, limit: number): Promise<Buf
   return Buffer.concat(chunks, bytes)
 }
 
-function postToFastApi(body: Buffer, token: string, signal: AbortSignal): Promise<IncomingMessage> {
+function postToFastApi(path: string, body: Buffer, token: string, signal: AbortSignal): Promise<IncomingMessage> {
   return new Promise((resolve, reject) => {
     const upstream = httpRequest({
-      hostname: '127.0.0.1', port: 8000, path: sortingJudgePath, method: 'POST', agent: false, signal,
+      hostname: '127.0.0.1', port: 8000, path, method: 'POST', agent: false, signal,
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', 'Content-Length': body.length },
     }, resolve)
     upstream.once('error', reject)
@@ -81,12 +82,13 @@ const upstreamErrors: Partial<Record<number, SortingJudgeError>> = {
   415: 'invalid_source', 422: 'invalid_source', 429: 'busy', 504: 'timeout',
 }
 
-async function forwardJudge(body: Buffer, token: string, response: ServerResponse) {
-  const signal = AbortSignal.timeout(timeoutMs)
+async function forwardJudge(path: string, body: Buffer, token: string, response: ServerResponse) {
+  const benchmark = path === sortingBenchmarkPath
+  const signal = AbortSignal.timeout(benchmark ? 120_000 : timeoutMs)
   let status: number
   let reply: Buffer | undefined
   try {
-    const upstream = await postToFastApi(body, token, signal)
+    const upstream = await postToFastApi(path, body, token, signal)
     status = upstream.statusCode ?? 502
     if (status !== 200 && status !== 503) {
       upstream.destroy()
@@ -103,11 +105,14 @@ async function forwardJudge(body: Buffer, token: string, response: ServerRespons
 
   let result
   try {
-    if (reply) result = parseSortingJudgeResult(JSON.parse(reply.toString('utf8')))
+    if (reply) {
+      const value: unknown = JSON.parse(reply.toString('utf8'))
+      result = benchmark ? parseSortingBenchmarkResult(value) : parseSortingJudgeResult(value)
+    }
   } catch {
     // Only the validated result is relayed to the browser.
   }
-  if (!result || (status === 503) !== (result.status === 'unavailable')) {
+  if (!result || (status === 503) !== (('algorithm_status' in result ? result.algorithm_status : result.status) === 'unavailable')) {
     sendError(response, 502, 'invalid_response')
     return
   }
@@ -124,7 +129,8 @@ export function sortingJudgeProxy(apiRoot: string): Plugin {
           (host !== 'localhost' && host !== '127.0.0.1' && host !== '::1')) return
       const token = readDevToken(apiRoot)
       server.middlewares.use(async (request, response, next) => {
-        if (request.url !== sortingJudgePath) return next()
+        const path = request.url
+        if (path !== sortingJudgePath && path !== sortingBenchmarkPath) return next()
         if (!isDirectSameOrigin(request)) return sendError(response, 403, 'proxy_forbidden')
         if (request.method !== 'POST') {
           response.setHeader('Allow', 'POST')
@@ -145,7 +151,7 @@ export function sortingJudgeProxy(apiRoot: string): Plugin {
           request.resume()
           return sendError(response, 413, 'source_too_large')
         }
-        await forwardJudge(body, token, response)
+        await forwardJudge(path, body, token, response)
       })
     },
   }

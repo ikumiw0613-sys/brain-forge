@@ -4,7 +4,7 @@ from random import Random
 
 from app.schemas.judge0 import Judge0ExecutionResult
 from app.schemas.sorting_judge import SortingCaseResult, SortingFailure, SortingJudgeResult
-from app.services.judge0 import Judge0Client, Judge0Error
+from app.services.judge0 import Judge0Client, Judge0Error, RunPython
 
 _MAX_JUDGE_SECONDS = 45
 _MAX_OUTPUT_CHARACTERS = 4096
@@ -103,25 +103,29 @@ def _case_failure(execution: Judge0ExecutionResult, expected: list[int]) -> Sort
 
 
 async def judge_sorting(client: Judge0Client, source_code: str) -> SortingJudgeResult:
-    results: list[SortingCaseResult] = []
     async with client.reserve_python_execution() as run:
-        try:
-            async with asyncio.timeout(_MAX_JUDGE_SECONDS):
-                for name, parts in _CASES:
-                    stdin = json.dumps({"source_code": source_code, "parts": parts})
-                    execution = await run(_PYTHON_HARNESS, stdin)
-                    reason = _case_failure(execution, sorted(parts))
-                    results.append(SortingCaseResult(name=name, passed=reason is None, reason=reason))
-                    if reason in _STOP_REASONS:
-                        break
-        except (Judge0Error, TimeoutError) as error:
-            name, _ = _CASES[len(results)]
-            reason = (
-                SortingFailure.JUDGE_TIMEOUT
-                if isinstance(error, TimeoutError) or str(error) in {"judge0_request_timeout", "judge0_poll_timeout"}
-                else SortingFailure.JUDGE_UNAVAILABLE
-            )
-            results.append(SortingCaseResult(name=name, passed=False, reason=reason))
+        return await judge_sorting_cases(run, source_code)
+
+
+async def judge_sorting_cases(run: RunPython, source_code: str) -> SortingJudgeResult:
+    results: list[SortingCaseResult] = []
+    try:
+        async with asyncio.timeout(_MAX_JUDGE_SECONDS):
+            for name, parts in _CASES:
+                stdin = json.dumps({"source_code": source_code, "parts": parts})
+                execution = await run(_PYTHON_HARNESS, stdin)
+                reason = _case_failure(execution, sorted(parts))
+                results.append(SortingCaseResult(name=name, passed=reason is None, reason=reason))
+                if reason in _STOP_REASONS:
+                    break
+    except (Judge0Error, TimeoutError) as error:
+        name, _ = _CASES[len(results)]
+        reason = (
+            SortingFailure.JUDGE_TIMEOUT
+            if isinstance(error, TimeoutError) or str(error) in {"judge0_request_timeout", "judge0_poll_timeout"}
+            else SortingFailure.JUDGE_UNAVAILABLE
+        )
+        results.append(SortingCaseResult(name=name, passed=False, reason=reason))
 
     results.extend(
         SortingCaseResult(name=name, passed=False, reason=SortingFailure.NOT_RUN)

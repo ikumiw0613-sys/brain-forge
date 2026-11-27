@@ -43,11 +43,11 @@ export type SortingJudgeResult = {
   cases: SortingJudgeCase[]
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function hasKey<T extends object>(labels: T, key: unknown): key is keyof T {
+export function hasKey<T extends object>(labels: T, key: unknown): key is keyof T {
   return typeof key === 'string' && Object.hasOwn(labels, key)
 }
 

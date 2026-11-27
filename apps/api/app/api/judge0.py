@@ -8,8 +8,10 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import ValidationError
 
 from app.schemas.judge0 import MAX_SOURCE_CHARACTERS, Judge0ExecutionResult, Judge0HealthResponse, Judge0PythonRequest
+from app.schemas.sorting_benchmark import SortingBenchmarkResult
 from app.schemas.sorting_judge import SortingJudgeResult
 from app.services.judge0 import Judge0Client, Judge0Error
+from app.services.sorting_benchmark import benchmark_sorting
 from app.services.sorting_judge import judge_sorting
 
 router = APIRouter(prefix="/dev/judge0", include_in_schema=False)
@@ -93,5 +95,14 @@ async def sorting_judge(request: Request, client: LocalJudge0, response: Respons
     response.headers["Cache-Control"] = "no-store"
     result = await judge_sorting(client, await _read_python_source(request))
     if result.status == "unavailable":
+        response.status_code = 503
+    return result
+
+
+@router.post("/sorting/benchmark")
+async def sorting_benchmark(request: Request, client: LocalJudge0, response: Response) -> SortingBenchmarkResult:
+    response.headers["Cache-Control"] = "no-store"
+    result = await benchmark_sorting(client, await _read_python_source(request))
+    if result.algorithm_status == "unavailable":
         response.status_code = 503
     return result

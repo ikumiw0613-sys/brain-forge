@@ -76,6 +76,10 @@ class Judge0Client:
         self._max_poll_attempts = max_poll_attempts
         self._execution_slot = asyncio.BoundedSemaphore(1)
 
+    @property
+    def python_language_id(self) -> int:
+        return self._python_language_id
+
     async def list_languages(self) -> list[Judge0Language]:
         response = await self._request("GET", "languages")
         try:
