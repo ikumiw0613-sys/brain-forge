@@ -7,6 +7,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { initialPythonCode } from '../../factory/warehouse/initialPythonCode'
 import { defaultSupplySeed, generateSupplyWeights } from '../manufacturing/pythonSupply'
 import type { SortingCommand, SortingEvent } from '../sorting/sortingProtocol'
+import { sortingJudgeCaseLabels, sortingJudgePath } from '../sorting/sortingJudgeProtocol'
 import { FactoryApp } from './FactoryApp'
 
 class SortingWorker {
@@ -56,6 +57,66 @@ async function remount() {
   root = createRoot(container)
   await act(async () => root.render(<FactoryApp />))
 }
+
+it('keeps server judging in flight across edits and navigation without changing the local trial or factory startup', async () => {
+  let finishRequest!: (response: Response) => void
+  const fetchMock = vi.fn<typeof fetch>().mockReturnValue(new Promise(resolve => { finishRequest = resolve }))
+  vi.stubGlobal('fetch', fetchMock)
+  const openSorting = async () => {
+    await click('[data-facility="sorting"] a')
+    await act(async () => vi.dynamicImportSettled())
+  }
+  const judgePanel = () => container.querySelector('[aria-labelledby="sorting-judge-title"]')!
+  const judgeButton = () => judgePanel().querySelector<HTMLButtonElement>('button')!
+  const localStatus = () => container.querySelector('.sorting-controls [role="status"]')?.textContent
+
+  await act(async () => root.render(<FactoryApp />))
+  await click('.map-run-control')
+  const preparation = SortingWorker.instances[0]
+  const startup = preparation.postMessage.mock.calls[0][0]
+  await openSorting()
+  const submitted = 'def sort_parts(a):\n    return sorted(a)'
+  await edit(editor('sorting'), submitted)
+  expect(localStatus()).toBe('試験前')
+  await act(async () => { judgeButton().click(); judgeButton().click() })
+  expect(fetchMock).toHaveBeenCalledExactlyOnceWith(sortingJudgePath, expect.objectContaining({
+    body: JSON.stringify({ source_code: submitted }),
+  }))
+  expect(judgeButton().disabled).toBe(true)
+  expect(localStatus()).toBe('試験前')
+  expect(SortingWorker.instances).toHaveLength(1)
+
+  const nextDraft = '# edited while server runs\n' + submitted
+  await edit(editor('sorting'), nextDraft)
+  expect(judgePanel().textContent).toContain('送信時の下書き')
+  await click('.sorting-controls .manufacturing-primary')
+  const trial = SortingWorker.instances[1]
+  expect(trial.postMessage.mock.calls[0][0]).toMatchObject({ code: nextDraft, sampleCount: 3 })
+  await click('.sorting-controls .manufacturing-buttons button:last-child')
+  expect(trial.terminate).toHaveBeenCalledOnce()
+  await click('.sorting a[href="/map/"]')
+  expect(container.querySelector('.map-live-status')?.textContent?.trim()).toBe('仕分け準備中')
+  expect(container.querySelector('.map-header-status > span')?.textContent).toBe('0 Tick')
+  expect(preparation.terminate).not.toHaveBeenCalled()
+  expect(preparation.postMessage).toHaveBeenCalledExactlyOnceWith(startup)
+
+  await openSorting()
+  expect(judgePanel().textContent).toContain('採点中')
+  expect(judgeButton().disabled).toBe(true)
+  await act(async () => judgeButton().click())
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+  await act(async () => {
+    const cases = Object.keys(sortingJudgeCaseLabels).map(name => ({ name, passed: true, reason: null }))
+    finishRequest(new Response(JSON.stringify({ status: 'passed', passed_cases: 8, total_cases: 8, cases })))
+  })
+  expect(judgePanel().textContent).toContain('採点成功 · 8/8 ケース合格')
+  expect(judgeButton().disabled).toBe(false)
+  expect(editor('sorting').state.doc.toString()).toBe(nextDraft)
+  window.dispatchEvent(new Event('pagehide'))
+  expect(JSON.parse(window.localStorage.getItem(sortingKey)!).code).toBe(nextDraft)
+  expect(localStatus()).toBe('試験前')
+  expect(SortingWorker.instances).toHaveLength(2)
+})
 
 it('coalesces edits, saves each facility separately and restores both drafts on restart', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
@@ -314,8 +375,9 @@ it('shares the warehouse draft and runs the sorting draft independently of windo
       worker.emit({ type: 'finished', samples: [1, 2, .05].map(ms => ({ ms, output })) })
     })
   }
-  expect(container.querySelectorAll('.sorting-table tbody tr')).toHaveLength(4)
-  expect(container.querySelector('.sorting-table tbody')?.textContent).toContain('60,000,000 件/分')
+  const trialRows = container.querySelector('section[aria-labelledby="sorting-results-title"] tbody')
+  expect(trialRows?.querySelectorAll('tr')).toHaveLength(4)
+  expect(trialRows?.textContent).toContain('60,000,000 件/分')
   expect(container.querySelector('#sorting-results-title + p')?.textContent).toBe('正答率 100%（4/4 ケース）')
   expect(container.querySelector('#sorting-goal-title ~ p:last-child')?.textContent).toBe('目標の判定 達成')
 

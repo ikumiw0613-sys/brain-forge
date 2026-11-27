@@ -3,12 +3,15 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig, normalizePath } from 'vite'
 import react from '@vitejs/plugin-react'
 import { viteStaticCopy } from 'vite-plugin-static-copy'
+import { sortingJudgeProxy } from './dev/sortingJudgeProxy.ts'
 
 const pyodideDir = dirname(fileURLToPath(import.meta.resolve('pyodide/pyodide.mjs')))
 const pyodideFiles = ['pyodide.mjs', 'pyodide.asm.mjs', 'pyodide.asm.wasm', 'python_stdlib.zip', 'pyodide-lock.json']
 
-export default defineConfig({
+export default defineConfig(({ command, mode, isPreview }) => ({
+  define: { __DEV_SORTING_JUDGE__: command === 'serve' && !isPreview && (mode === 'development' || process.env.VITEST === 'true') },
   plugins: [
+    command === 'serve' && mode === 'development' && !isPreview && sortingJudgeProxy(resolve(import.meta.dirname, '../api')),
     react(),
     viteStaticCopy({
       targets: pyodideFiles.map(file => ({
@@ -30,4 +33,4 @@ export default defineConfig({
       ],
     },
   },
-})
+}))

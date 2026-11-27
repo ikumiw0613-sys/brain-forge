@@ -8,7 +8,7 @@ Brain Forge は、工場の設備を操作しながら、観察・仮説・実�
 | --- | --- |
 | Web | Node.js 24.22.1 LTS、pnpm 10.34.9、React / React DOM 19.3.1、TypeScript 5.9.3（strict）、Vite 8.3.8、CSS、ESLint 10.15.0 |
 | API | Python 3.13.15、uv 0.13.9、FastAPI 0.165.0、Uvicorn 0.54.0、Pydantic 2.14.4、pydantic-settings 2.16.3 |
-| テスト | pytest 9.2.0、HTTPX2 2.16.2（TestClient 用） |
+| Judge0 通信・テスト | HTTPX2 2.16.2、pytest 9.2.0 |
 | データ・認証 | Supabase JavaScript Client 2.119.2。PostgreSQL と Supabase Auth は今後利用予定 |
 | 作業環境 | Windows、PowerShell、Git for Windows。エディターは VS Code を想定 |
 
@@ -93,7 +93,69 @@ if (!(Test-Path apps/api/.env.local)) { Copy-Item apps/api/.env.example apps/api
 
 Web は URL と公開キーがそろうと、既存のセッションを復元するか、匿名でサインインします。ST-001 のプレイには、匿名認証を有効にした Supabase と FastAPI の認証・DB 接続設定が必要です。工場画面の下部では、認証状態と公開ヘルスチェックを確認できます。
 
-`VITE_` の値はビルド成果物に含まれます。シークレットキーと旧 `service_role` キーはサーバー側だけで管理してください。Git には値が空の `.env.example` を含め、実際の `.env`・`.env.local` は除外します。[Vite の環境変数](https://vite.dev/guide/env-and-mode) · [Supabase の API キー](https://supabase.com/docs/guides/api/api-keys)
+`VITE_` の値はビルド成果物に含まれます。シークレットキーと旧 `service_role` キーはサーバー側だけで管理してください。Git には設定例の `.env.example` を含め、実際の `.env`・`.env.local` は除外します。[Vite の環境変数](https://vite.dev/guide/env-and-mode) · [Supabase の API キー](https://supabase.com/docs/guides/api/api-keys)
+
+## Judge0 のローカル疎通確認
+
+`apps/api/.env.local` に以下を設定し、`pnpm.cmd dev:api` で起動します。既存の `.env.local` がある場合は Judge0 の項目を追記します。
+
+| 変数 | 設定値 |
+| --- | --- |
+| `APP_ENV` / `JUDGE0_DEV_ENABLED` | `development` / `true`。両方を指定した場合に開発用 API が有効 |
+| `JUDGE0_BASE_URL` | 自分の固定の Tailscale Serve URL |
+| `JUDGE0_PYTHON_LANGUAGE_ID` | 接続先の `GET /languages` に表示される Python の ID |
+| `JUDGE0_DEV_TOKEN` | ローカル FastAPI 専用の Bearer トークン。`uv run --directory apps/api --locked python -c "import secrets; print(secrets.token_urlsafe(32))"` で生成 |
+| `JUDGE0_AUTH_TOKEN` | 接続先が Judge0 の `X-Auth-Token` を要求する場合の値 |
+| `JUDGE0_REQUEST_TIMEOUT` | Judge0 への各 HTTP リクエストの上限秒数。既定値は `3` |
+| `JUDGE0_MAX_POLL_SECONDS` / `JUDGE0_MAX_POLL_ATTEMPTS` | 提出後のポーリングの上限秒数と回数。既定値は `15` 秒、`30` 回 |
+
+ローカル FastAPI への接続は `127.0.0.1` へ直接行います。Tailscale Serve は Ubuntu VM 上の Judge0 への接続に使います。
+
+```powershell
+$judge0DevApi = 'http://127.0.0.1:8000/api/v1/dev/judge0'
+$judge0DevToken = Read-Host 'JUDGE0_DEV_TOKEN' -AsSecureString
+$judge0DevCredential = [pscredential]::new('judge0', $judge0DevToken)
+$judge0DevHeaders = @{ Authorization = 'Bearer ' + $judge0DevCredential.GetNetworkCredential().Password }
+Invoke-RestMethod "$judge0DevApi/health" -Headers $judge0DevHeaders
+@('print(1 + 2)', 'raise RuntimeError("test")', 'while True: pass') | ForEach-Object {
+    Invoke-RestMethod "$judge0DevApi/execute" -Method Post -Headers $judge0DevHeaders `
+        -ContentType 'application/json' -Body (@{ source_code = $_ } | ConvertTo-Json -Compress)
+}
+$sortingBody = @{ source_code = "def sort_parts(a):`n    return sorted(a)" } | ConvertTo-Json -Compress
+Invoke-RestMethod "$judge0DevApi/sorting/judge" -Method Post -Headers $judge0DevHeaders `
+    -ContentType 'application/json' -Body $sortingBody
+Remove-Variable judge0DevHeaders, judge0DevCredential, judge0DevToken
+```
+
+- `GET /health` は接続先の有効な言語一覧と設定した Python ID を返します。`POST /execute` は `source_code` だけを受け取ります。3 つの例の期待結果は順に `Accepted`（`stdout` は `"3\n"`）、`Runtime Error`、`Time Limit Exceeded` です。
+- `execution_time` は Judge0 が計測した CPU 時間（秒）、`memory_usage` は使用メモリ（KB）です。未計測値は `null` です。Judge0 が報告する `Internal Error` はステータスだけを返します。通信障害は `503`、リクエストやポーリングのタイムアウトは `504`、不正な上流応答は `502` です。[Judge0 Extra CE API](https://extra-ce.judge0.com/)
+- ソースは最大 10,000 文字です。同時に処理する実行リクエストは API プロセスあたり 1 件で、追加の実行リクエストは `429` を返します。Judge0 には CPU 2 秒、実時間 5 秒、メモリ 128,000 KB、ネットワーク無効を指定します。FastAPI がポーリングを終了した時点で Judge0 側のジョブが残る場合があるため、VM 側にもワーカー数、キュー上限、外向き通信の制限を設定します。
+- 開発用 API は単一ワーカーのループバック起動で使い、リバースプロキシや Tailscale Serve で公開しないでください。Judge0 側は tailnet の許可ユーザーに絞り、VM に本番の認証情報を置かないでください。
+
+### Sorting Judge の正当性試験
+
+`pnpm.cmd dev:api` と `pnpm.cmd dev:web` を起動し、[仕分け施設](http://localhost:5173/map/?view=sorting) の「サーバー採点」を押します。押した時点の `sorting.py` の下書きを採点します。採点中に編集や施設の切り替えをしても、元のリクエストを待ち、送信した下書きの結果を表示します。「試験開始」は引き続き Pyodide で動作します。
+
+開発時の Vite は、同一オリジンのループバック接続から来た採点リクエストを `127.0.0.1:8000` の FastAPI に転送します。Vite は `apps/api/.env` と `apps/api/.env.local` またはサーバーの環境変数から `JUDGE0_DEV_TOKEN` を読み、FastAPI へだけ Bearer ヘッダーを付けます。設定変更後は両サーバーを再起動します。Vite と FastAPI はループバックで起動し、外部に公開しないでください。採点画面と転送経路は開発サーバーで使う構成です。
+
+同じローカル認証で `POST /api/v1/dev/judge0/sorting/judge` に `source_code` を送ります。`sort_parts(a)` は整数リストを受け取り、同じ要素と重複数を保った昇順の整数リストを返します。採点は入力のコピーを渡すため、入力をその場でソートして返す実装も使えます。
+
+固定 seed `42` のランダム・逆順・昇順・重複多数と、全要素同一・1 要素・空・負数とゼロを含む配列の計 8 ケースを最大 45 秒で試します。1 ケース 1 提出で、`/execute` と同じ実行枠・リソース制限を共有します。45 秒は採点リクエスト全体の待機上限です。
+
+応答の `status` は `passed`、`failed`、`unavailable` のいずれかで、`cases` にケース名・合否・理由を返します。通信障害や Judge0 側の異常は `503` で、判定済みのケースを返します。通信障害やユーザーコードの時間・メモリ制限で打ち切った残りのケースは `not_run` です。Python が `MemoryError` を返した場合に `memory_limit_exceeded` と判定します。Judge0 が原因を示さずプロセスを終了した場合は実行エラーとして扱います。[Judge0 Extra CE API](https://extra-ce.judge0.com/)
+
+FastAPI が戻り値の型・要素数・順序・期待値への一致を検証します。ユーザーコードとハーネスは Judge0 内で同じ Python プロセスを共有するため、信頼された開発環境で使ってください。公開採点には、ユーザーコードと判定処理を分離した信頼境界が必要です。
+
+通常の API テストはモックを使います。上の Judge0 設定で実接続を確認する場合は、リポジトリのルートで次を実行します。
+
+```powershell
+$env:BRAIN_FORGE_RUN_JUDGE0_E2E = '1'
+try {
+    pnpm.cmd test:api tests/test_sorting_judge_e2e.py
+} finally {
+    Remove-Item Env:BRAIN_FORGE_RUN_JUDGE0_E2E
+}
+```
 
 ## Supabase で認証と進捗保存を使う
 
@@ -111,7 +173,7 @@ PostgreSQL を使う統合テストは、マイグレーション適用済みの
 | `pnpm.cmd typecheck` | TypeScript の strict 型チェック |
 | `pnpm.cmd build` | 型チェックと本番用ビルド。出力は `apps/web/dist` |
 | `pnpm.cmd test:web` | ゲーム API、認証、検品の再送、ヘルスチェック、工場画面のモックテスト |
-| `pnpm.cmd test:api` | pytest。ヘルスチェック、検品ルール、認証と所有者チェック、および設定時の PostgreSQL 永続化と RLS を検証 |
+| `pnpm.cmd test:api` | pytest。ヘルスチェック、検品ルール、認証と所有者チェック、Judge0 のモック実行、および設定時の PostgreSQL 永続化と RLS を検証 |
 
 API クライアントと型生成の詳細は [M4-2 ゲーム API クライアント](docs/game-api-client.md) を参照してください。
 

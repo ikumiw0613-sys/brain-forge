@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { PythonCodeEditor } from '../../factory/python/PythonCodeEditor'
 import { Workspace } from '../../game/workspace/Workspace'
@@ -8,6 +8,8 @@ import { partsPerMinute, repetitions, sortingKinds, sortingSizes, timingFloorMs 
 import type { SortingCase, SortingKind } from './sortingCases'
 import type { SortingResult } from './sortingProtocol'
 import './sorting.css'
+
+const DevSortingJudge = __DEV_SORTING_JUDGE__ ? lazy(() => import('./DevSortingJudge')) : null
 
 export const initialSortingCode = `def sort_parts(a):
     for i in range(1, len(a)):
@@ -161,6 +163,7 @@ export function SortingScreen({ code, onChange, workspace, warehouseEditor }: {
             <p>目標の判定 {targetStatus}</p>
           </section>
         </div>
+        {DevSortingJudge && <Suspense fallback={null}><DevSortingJudge code={code} /></Suspense>}
         <section className="manufacturing-panel sorting-panel" aria-labelledby="sorting-results-title">
           <h2 id="sorting-results-title">テストケース別結果</h2>
           <p>正答率 <strong>{graded ? `${number(correct * 100 / graded)}%` : '—'}</strong>

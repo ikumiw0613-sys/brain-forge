@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev:web": "pnpm --filter @brain-forge/web dev",
-    "dev:api": "uv run --directory apps/api --locked uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload",
+    "dev:api": "uv run --directory apps/api --locked uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-proxy-headers --reload",
     "build": "pnpm --filter @brain-forge/web build",
     "lint": "pnpm --filter @brain-forge/web lint",
     "typecheck": "pnpm contracts:check && pnpm --filter @brain-forge/web typecheck",
